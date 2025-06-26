@@ -1,0 +1,6 @@
+(library
+ (name mcp_sdk)
+ (public_name mcp.sdk)
+ (libraries mcp str)
+ (preprocess
+  (pps ppx_deriving_yojson)))

@@ -1,0 +1,6 @@
+(library
+ (name mcp)
+ (public_name mcp)
+ (libraries jsonrpc yojson ppx_deriving_yojson.runtime)
+ (preprocess
+  (pps ppx_deriving_yojson)))

@@ -1,0 +1,20 @@
+(library
+ (public_name ocaml-mcp-server)
+ (name ocaml_mcp_server)
+ (libraries
+  mcp
+  mcp-eio
+  mcp.sdk
+  eio
+  eio.unix
+  csexp
+  yojson
+  merlin-lib.kernel
+  merlin-lib.query_commands
+  merlin-lib.query_protocol
+  merlin-lib.ocaml_typing
+  merlin-lib.analysis
+  dune-rpc
+  unix)
+ (preprocess
+  (pps ppx_deriving_yojson)))

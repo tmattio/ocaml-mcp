@@ -1,0 +1,5 @@
+(executable
+ (name weather_server)
+ (libraries mcp mcp_sdk mcp_eio eio_main)
+ (preprocess
+  (pps ppx_deriving_yojson)))

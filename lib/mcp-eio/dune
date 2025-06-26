@@ -1,0 +1,5 @@
+(library
+ (name mcp_eio)
+ (public_name mcp-eio)
+ (libraries mcp eio jsonrpc http cohttp-eio)
+ (modules_without_implementation transport))
