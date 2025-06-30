@@ -2,4 +2,13 @@
  (public_name ocaml-mcp-server)
  (package ocaml-mcp-server)
  (name main)
- (libraries ocaml_mcp_server eio_main logs logs.fmt fmt fmt.tty fmt.cli logs.cli cmdliner))
+ (libraries
+  ocaml_mcp_server
+  eio_main
+  logs
+  logs.fmt
+  fmt
+  fmt.tty
+  fmt.cli
+  logs.cli
+  cmdliner))

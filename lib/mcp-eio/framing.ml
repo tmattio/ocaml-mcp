@@ -31,11 +31,11 @@ let rec yojson_to_json (yojson : Yojson.Safe.t) : Jsonrpc.Json.t =
   | `Null -> `Null
   | `String s -> `String s
   | `Tuple lst -> `List (List.map yojson_to_json lst)
-  | `Variant (name, arg) ->
+  | `Variant (name, arg) -> (
       match arg with
       | None -> `Assoc [ ("variant", `String name) ]
       | Some v ->
-          `Assoc [ ("variant", `String name); ("value", yojson_to_json v) ]
+          `Assoc [ ("variant", `String name); ("value", yojson_to_json v) ])
 
 let write_packet (sink : _ Flow.sink) (packet : Jsonrpc.Packet.t) =
   let json = Jsonrpc.Packet.yojson_of_t packet in
@@ -48,23 +48,23 @@ let write_packet (sink : _ Flow.sink) (packet : Jsonrpc.Packet.t) =
 let read_headers (reader : Buf_read.t) : (string * string) list =
   let rec loop acc =
     match Buf_read.line reader with
-    | "" | "\r" -> List.rev acc  (* Empty line signals end of headers *)
-    | line ->
+    | "" | "\r" -> List.rev acc (* Empty line signals end of headers *)
+    | line -> (
         (* Remove trailing \r if present *)
-        let line = 
+        let line =
           if String.length line > 0 && line.[String.length line - 1] = '\r' then
             String.sub line 0 (String.length line - 1)
           else line
         in
         (* Parse header *)
-        (match String.index_opt line ':' with
-         | None -> loop acc  (* Skip malformed headers *)
-         | Some idx ->
-             let key = String.sub line 0 idx in
-             let value_start = idx + 1 in
-             let value_len = String.length line - value_start in
-             let value = String.sub line value_start value_len |> String.trim in
-             loop ((key, value) :: acc))
+        match String.index_opt line ':' with
+        | None -> loop acc (* Skip malformed headers *)
+        | Some idx ->
+            let key = String.sub line 0 idx in
+            let value_start = idx + 1 in
+            let value_len = String.length line - value_start in
+            let value = String.sub line value_start value_len |> String.trim in
+            loop ((key, value) :: acc))
     | exception End_of_file -> List.rev acc
   in
   loop []
@@ -73,7 +73,7 @@ let read_packet (reader : Buf_read.t) : Jsonrpc.Packet.t option =
   try
     let headers = read_headers reader in
     match List.assoc_opt "Content-Length" headers with
-    | None -> None  (* No Content-Length header *)
+    | None -> None (* No Content-Length header *)
     | Some len_str -> (
         match int_of_string_opt len_str with
         | None -> failwith "Invalid Content-Length value"

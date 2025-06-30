@@ -5,15 +5,12 @@ open Mcp_sdk
 
 (* Setup logging *)
 let src = Logs.Src.create "ocaml-mcp-server" ~doc:"OCaml MCP Server logging"
+
 module Log = (val Logs.src_log src : Logs.LOG)
 
-type config = {
-  project_root : string option;
-  enable_dune : bool;
-}
+type config = { project_root : string option; enable_dune : bool }
 
-let default_config =
-  { project_root = None; enable_dune = true }
+let default_config = { project_root = None; enable_dune = true }
 
 let find_project_root () =
   (* Look for dune-project or .git in parent directories *)
@@ -48,8 +45,10 @@ type signature_item =
 let handle_build_status dune_rpc _args _ctx =
   match dune_rpc with
   | None ->
-      Ok (Mcp_sdk.Tool_result.error 
-        "Dune RPC not connected. Please run this command from a dune project.")
+      Ok
+        (Mcp_sdk.Tool_result.error
+           "Dune RPC not connected. Please run this command from a dune \
+            project.")
   | Some dune ->
       (* Get current diagnostics and progress from dune RPC client *)
       let diagnostics = Dune_rpc_client.get_diagnostics dune ~file:"" in
@@ -99,9 +98,8 @@ let format_signature_item item =
 
 (* Find .cmi file for a module in _build directory *)
 let find_cmi_file ~project_root ~module_path =
-  let module_name = match module_path with
-    | [] -> None
-    | path -> Some (String.concat "." path)
+  let module_name =
+    match module_path with [] -> None | path -> Some (String.concat "." path)
   in
   match module_name with
   | None -> None
@@ -110,20 +108,21 @@ let find_cmi_file ~project_root ~module_path =
       let cmi_name = lowercase_name ^ ".cmi" in
       let build_dir = Filename.concat project_root "_build" in
       let private_pkg_dir = Filename.concat build_dir "_private/.pkg" in
-      
+
       (* Search in _build/_private/.pkg/ *)
       let rec search_dir dir =
         if Sys.file_exists dir && Sys.is_directory dir then
           let entries = Sys.readdir dir in
-          Array.fold_left (fun acc entry ->
-            match acc with
-            | Some _ -> acc
-            | None ->
-                let path = Filename.concat dir entry in
-                if entry = cmi_name then Some path
-                else if Sys.is_directory path then search_dir path
-                else None
-          ) None entries
+          Array.fold_left
+            (fun acc entry ->
+              match acc with
+              | Some _ -> acc
+              | None ->
+                  let path = Filename.concat dir entry in
+                  if entry = cmi_name then Some path
+                  else if Sys.is_directory path then search_dir path
+                  else None)
+            None entries
         else None
       in
       search_dir private_pkg_dir
@@ -132,20 +131,24 @@ let find_cmi_file ~project_root ~module_path =
 let read_module_signature ~cmi_path =
   (* For now, return a simple message indicating where the .cmi file is *)
   (* In a real implementation, we would parse the .cmi file *)
-  Printf.sprintf "Module interface file found at: %s\n\n\
-                  To read the actual signature, a .cmi parser would be needed." cmi_path
+  Printf.sprintf
+    "Module interface file found at: %s\n\n\
+     To read the actual signature, a .cmi parser would be needed."
+    cmi_path
 
 let handle_module_signature project_root args _ctx =
-  Log.debug (fun m -> m "handle_module_signature called with module_path: %s" 
-    (String.concat "." args.module_path));
-  
+  Log.debug (fun m ->
+      m "handle_module_signature called with module_path: %s"
+        (String.concat "." args.module_path));
+
   match find_cmi_file ~project_root ~module_path:args.module_path with
   | None ->
-      Ok (Mcp_sdk.Tool_result.error
-        (Printf.sprintf
-          "Could not find module %s in _build/_private/.pkg/. \
-           Make sure the project is built with dune."
-          (String.concat "." args.module_path)))
+      Ok
+        (Mcp_sdk.Tool_result.error
+           (Printf.sprintf
+              "Could not find module %s in _build/_private/.pkg/. Make sure \
+               the project is built with dune."
+              (String.concat "." args.module_path)))
   | Some cmi_path ->
       Log.debug (fun m -> m "Found .cmi file at: %s" cmi_path);
       let signature_text = read_module_signature ~cmi_path in
@@ -173,7 +176,6 @@ let create_server ~sw ~env ~config =
       None)
   in
 
-
   (* Create SDK server with pagination support *)
   let server =
     Server.create
@@ -187,7 +189,8 @@ let create_server ~sw ~env ~config =
           resources = None;
           tools = Some { list_changed = None };
         }
-      ~pagination_config:{ page_size = 10 }  (* Demonstrate pagination with 10 items per page *)
+      ~pagination_config:{ page_size = 10 }
+        (* Demonstrate pagination with 10 items per page *)
       ()
   in
 

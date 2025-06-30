@@ -3,6 +3,7 @@ module Protocol = Mcp.Protocol
 
 (* Setup logging *)
 let src = Logs.Src.create "mcp.sdk" ~doc:"MCP SDK logging"
+
 module Log = (val Logs.src_log src : Logs.LOG)
 
 module Context = struct
@@ -15,16 +16,13 @@ module Context = struct
   let request_id t = t.req_id
   let progress_token t = t.prog_token
   let send_notification t notif = t.send_notif notif
-  
+
   let report_progress t ~progress ?total () =
     match t.prog_token with
     | None -> ()
     | Some token ->
-        let progress_params = 
-          { Mcp.Notification.Progress.progress_token = token; 
-            progress; 
-            total 
-          }
+        let progress_params =
+          { Mcp.Notification.Progress.progress_token = token; progress; total }
         in
         send_notification t (Mcp.Notification.Progress progress_params)
 end
@@ -33,20 +31,23 @@ module Tool_result = struct
   let create ?content ?structured_content ?is_error () =
     {
       Mcp.Request.Tools.Call.content = Option.value content ~default:[];
-      Mcp.Request.Tools.Call.structured_content = structured_content;
-      Mcp.Request.Tools.Call.is_error = is_error;
+      Mcp.Request.Tools.Call.structured_content;
+      Mcp.Request.Tools.Call.is_error;
     }
-    
+
   let text s =
-    create ~content:[Mcp.Types.Content.Text { type_ = "text"; text = s }] ()
-    
+    create ~content:[ Mcp.Types.Content.Text { type_ = "text"; text = s } ] ()
+
   let error msg =
-    create ~content:[Mcp.Types.Content.Text { type_ = "text"; text = msg }] ~is_error:true ()
-    
+    create
+      ~content:[ Mcp.Types.Content.Text { type_ = "text"; text = msg } ]
+      ~is_error:true ()
+
   let structured ?text json =
-    let content = match text with
+    let content =
+      match text with
       | None -> []
-      | Some t -> [Mcp.Types.Content.Text { type_ = "text"; text = t }]
+      | Some t -> [ Mcp.Types.Content.Text { type_ = "text"; text = t } ]
     in
     create ~content ~structured_content:json ()
 end
@@ -106,9 +107,7 @@ module Server = struct
     on_unsubscribe : string -> Context.t -> (unit, string) result;
   }
 
-  type pagination_config = {
-    page_size : int;
-  }
+  type pagination_config = { page_size : int }
 
   type t = {
     server_info : Types.ServerInfo.t;
@@ -137,9 +136,7 @@ module Server = struct
           resources = None;
           tools = None;
           completions = None;
-        }) 
-      ?pagination_config
-      () =
+        }) ?pagination_config () =
     {
       server_info;
       capabilities;
@@ -151,24 +148,34 @@ module Server = struct
     }
 
   (* Helper function for tools with no arguments *)
-  let tool_no_args t name ?title ?description ?output_schema ?annotations handler =
-    let typed_handler _ ctx = 
+  let tool_no_args t name ?title ?description ?output_schema ?annotations
+      handler =
+    let typed_handler _ ctx =
       let result = handler () ctx in
       (* Validate output if schema provided *)
-      (match (result, output_schema) with
-      | Ok res, Some schema when res.Mcp.Request.Tools.Call.structured_content <> None ->
-          let content = Option.get res.Mcp.Request.Tools.Call.structured_content in
+      match (result, output_schema) with
+      | Ok res, Some schema
+        when res.Mcp.Request.Tools.Call.structured_content <> None -> (
+          let content =
+            Option.get res.Mcp.Request.Tools.Call.structured_content
+          in
           let basic_content = Yojson.Safe.to_basic content in
           let basic_schema = Yojson.Safe.to_basic schema in
-          (match Jsonschema.create_validator_from_json ~schema:basic_schema () with
-          | Error err -> Error (Format.asprintf "Invalid output schema: %a" Jsonschema.pp_compile_error err)
-          | Ok validator ->
+          match
+            Jsonschema.create_validator_from_json ~schema:basic_schema ()
+          with
+          | Error err ->
+              Error
+                (Format.asprintf "Invalid output schema: %a"
+                   Jsonschema.pp_compile_error err)
+          | Ok validator -> (
               match Jsonschema.validate validator basic_content with
-          | Ok () -> result
-          | Error error -> 
-              Error (Printf.sprintf "Output validation failed: %s" 
-                (Jsonschema.Validation_error.to_string error)))
-      | _ -> result)
+              | Ok () -> result
+              | Error error ->
+                  Error
+                    (Printf.sprintf "Output validation failed: %s"
+                       (Jsonschema.Validation_error.to_string error))))
+      | _ -> result
     in
     let th : tool_handler =
       {
@@ -209,35 +216,56 @@ module Server = struct
           let json = Option.value json_opt ~default:(`Assoc []) in
           (* Validate input against schema first *)
           let basic_json = Yojson.Safe.to_basic json in
-          (match Jsonschema.create_validator_from_json ~schema:basic_schema () with
+          match
+            Jsonschema.create_validator_from_json ~schema:basic_schema ()
+          with
           | Error err ->
-              Error (Format.asprintf "Invalid input schema: %a" Jsonschema.pp_compile_error err)
-          | Ok validator ->
+              Error
+                (Format.asprintf "Invalid input schema: %a"
+                   Jsonschema.pp_compile_error err)
+          | Ok validator -> (
               match Jsonschema.validate validator basic_json with
               | Error error ->
-                  Error (Printf.sprintf "Input validation failed: %s" 
-                    (Jsonschema.Validation_error.to_string error))
-          | Ok () ->
-              match Args.of_yojson json with
-              | Ok args -> 
-                  (* Call the handler *)
-                  let result = handler args ctx in
-                  (* Validate output if schema provided *)
-                  (match (result, output_schema) with
-                  | Ok res, Some schema when res.Mcp.Request.Tools.Call.structured_content <> None ->
-                      let content = Option.get res.Mcp.Request.Tools.Call.structured_content in
-                      let basic_content = Yojson.Safe.to_basic content in
-                      let basic_schema = Yojson.Safe.to_basic schema in
-                      (match Jsonschema.create_validator_from_json ~schema:basic_schema () with
-                      | Error err -> Error (Format.asprintf "Invalid output schema: %a" Jsonschema.pp_compile_error err)
-                      | Ok validator ->
-                          match Jsonschema.validate validator basic_content with
-                      | Ok () -> result
-                      | Error error -> 
-                          Error (Printf.sprintf "Output validation failed: %s" 
-                            (Jsonschema.Validation_error.to_string error)))
-                  | _ -> result)
-              | Error e -> Error ("Failed to parse arguments: " ^ e))
+                  Error
+                    (Printf.sprintf "Input validation failed: %s"
+                       (Jsonschema.Validation_error.to_string error))
+              | Ok () -> (
+                  match Args.of_yojson json with
+                  | Ok args -> (
+                      (* Call the handler *)
+                      let result = handler args ctx in
+                      (* Validate output if schema provided *)
+                      match (result, output_schema) with
+                      | Ok res, Some schema
+                        when res.Mcp.Request.Tools.Call.structured_content
+                             <> None -> (
+                          let content =
+                            Option.get
+                              res.Mcp.Request.Tools.Call.structured_content
+                          in
+                          let basic_content = Yojson.Safe.to_basic content in
+                          let basic_schema = Yojson.Safe.to_basic schema in
+                          match
+                            Jsonschema.create_validator_from_json
+                              ~schema:basic_schema ()
+                          with
+                          | Error err ->
+                              Error
+                                (Format.asprintf "Invalid output schema: %a"
+                                   Jsonschema.pp_compile_error err)
+                          | Ok validator -> (
+                              match
+                                Jsonschema.validate validator basic_content
+                              with
+                              | Ok () -> result
+                              | Error error ->
+                                  Error
+                                    (Printf.sprintf
+                                       "Output validation failed: %s"
+                                       (Jsonschema.Validation_error.to_string
+                                          error))))
+                      | _ -> result)
+                  | Error e -> Error ("Failed to parse arguments: " ^ e)))
         in
         let th : tool_handler =
           {
@@ -263,11 +291,12 @@ module Server = struct
     t.capabilities <-
       {
         t.capabilities with
-        resources = 
-          Some { 
-            subscribe = Option.map (fun _ -> true) t.subscription_handler; 
-            list_changed = None 
-          };
+        resources =
+          Some
+            {
+              subscribe = Option.map (fun _ -> true) t.subscription_handler;
+              list_changed = None;
+            };
       }
 
   let resource_template t name ~template ?description ?mime_type ?list_handler
@@ -288,11 +317,12 @@ module Server = struct
     t.capabilities <-
       {
         t.capabilities with
-        resources = 
-          Some { 
-            subscribe = Option.map (fun _ -> true) t.subscription_handler; 
-            list_changed = None 
-          };
+        resources =
+          Some
+            {
+              subscribe = Option.map (fun _ -> true) t.subscription_handler;
+              list_changed = None;
+            };
       }
 
   (* Helper function for prompts with no arguments *)
@@ -316,14 +346,15 @@ module Server = struct
     t.capabilities <-
       {
         t.capabilities with
-        resources = 
-          Some { 
-            subscribe = Some true; 
-            list_changed = 
-              match t.capabilities.resources with
-              | Some r -> r.list_changed
-              | None -> None
-          };
+        resources =
+          Some
+            {
+              subscribe = Some true;
+              list_changed =
+                (match t.capabilities.resources with
+                | Some r -> r.list_changed
+                | None -> None);
+            };
       }
 
   let prompt : type a.
@@ -372,62 +403,52 @@ module Server = struct
       | Error _ -> Error "Failed to decode cursor"
     with _ -> Error "Invalid cursor"
 
-  let encode_cursor offset =
-    Base64.encode_string (string_of_int offset)
+  let encode_cursor offset = Base64.encode_string (string_of_int offset)
 
   let paginate_list items cursor page_size =
-    let start_offset = 
+    let start_offset =
       match cursor with
       | None -> 0
-      | Some c -> (
-          match decode_cursor c with
-          | Ok n -> n
-          | Error _ -> 0)
+      | Some c -> ( match decode_cursor c with Ok n -> n | Error _ -> 0)
     in
     let total_items = List.length items in
     let items_array = Array.of_list items in
     let end_offset = min (start_offset + page_size) total_items in
-    let page_items = 
+    let page_items =
       if start_offset < total_items then
         Array.sub items_array start_offset (end_offset - start_offset)
         |> Array.to_list
       else []
     in
     let next_cursor =
-      if end_offset < total_items then
-        Some (encode_cursor end_offset)
-      else None
+      if end_offset < total_items then Some (encode_cursor end_offset) else None
     in
     (page_items, next_cursor)
 
   let parse_uri_template template uri =
     (* Extract variable names from template *)
     let var_regex = Re.Perl.compile_pat "\\{([^}]+)\\}" in
-    let vars = 
-      Re.all var_regex template
-      |> List.map (fun g -> Re.Group.get g 1)
+    let vars =
+      Re.all var_regex template |> List.map (fun g -> Re.Group.get g 1)
     in
-    
+
     (* Build regex pattern from template *)
     let pattern =
       template
       |> Re.replace_string (Re.Perl.compile_pat "\\{[^}]+\\}") ~by:"([^/]+)"
-      |> Re.Perl.re
-      |> Re.compile
+      |> Re.Perl.re |> Re.compile
     in
-    
+
     (* Try to match URI against pattern *)
     match Re.exec_opt pattern uri with
     | None -> None
-    | Some groups ->
+    | Some groups -> (
         try
-          let values = 
-            List.mapi (fun i var -> 
-              (var, Re.Group.get groups (i + 1))
-            ) vars
+          let values =
+            List.mapi (fun i var -> (var, Re.Group.get groups (i + 1))) vars
           in
           Some values
-        with Not_found -> None
+        with Not_found -> None)
 
   let to_mcp_server t =
     let send_notification_ref = ref (fun _ -> ()) in
@@ -468,7 +489,7 @@ module Server = struct
             match t.pagination_config with
             | None -> Ok { tools = all_tools; next_cursor = None }
             | Some config ->
-                let tools, next_cursor = 
+                let tools, next_cursor =
                   paginate_list all_tools params.cursor config.page_size
                 in
                 Ok { tools; next_cursor });
@@ -511,7 +532,7 @@ module Server = struct
             match t.pagination_config with
             | None -> Ok { resources = all_resources; next_cursor = None }
             | Some config ->
-                let resources, next_cursor = 
+                let resources, next_cursor =
                   paginate_list all_resources params.cursor config.page_size
                 in
                 Ok { resources; next_cursor });
@@ -607,7 +628,7 @@ module Server = struct
             match t.pagination_config with
             | None -> Ok { prompts = all_prompts; next_cursor = None }
             | Some config ->
-                let prompts, next_cursor = 
+                let prompts, next_cursor =
                   paginate_list all_prompts params.cursor config.page_size
                 in
                 Ok { prompts; next_cursor });

@@ -4,6 +4,7 @@ open Eio
 
 (* Setup logging *)
 let src = Logs.Src.create "mcp.eio.stdio" ~doc:"MCP Eio Stdio Transport logging"
+
 module Log = (val Logs.src_log src : Logs.LOG)
 
 type stdin = Flow.source_ty Eio.Std.r

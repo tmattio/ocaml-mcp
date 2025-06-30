@@ -7,19 +7,20 @@ module Drpc = Dune_rpc.V1
 
 (* Setup logging *)
 let src = Logs.Src.create "dune-rpc-client" ~doc:"Dune RPC Client logging"
+
 module Log = (val Logs.src_log src : Logs.LOG)
 
 (* Request ID counter *)
 module Request_id = struct
   type t = { mutable counter : int; mutex : Eio.Mutex.t }
-  
+
   let create () = { counter = 0; mutex = Eio.Mutex.create () }
-  
+
   let next t =
     Eio.Mutex.use_rw ~protect:true t.mutex (fun () ->
-      let id = t.counter in
-      t.counter <- t.counter + 1;
-      Printf.sprintf "dune-rpc-%d" id)
+        let id = t.counter in
+        t.counter <- t.counter + 1;
+        Printf.sprintf "dune-rpc-%d" id)
 end
 
 (* Registry polling module following OCaml LSP pattern *)
@@ -32,10 +33,10 @@ module Registry_poll = struct
 
   let read_file ~fs path =
     try
-      let content = Eio.Path.load (Eio.Path.(fs / path)) in
+      let content = Eio.Path.load Eio.Path.(fs / path) in
       Ok content
-    with 
-    | Eio.Io (Eio.Fs.E Not_found _, _) -> Error "File not found"
+    with
+    | Eio.Io (Eio.Fs.E (Not_found _), _) -> Error "File not found"
     | exn -> Error (Printexc.to_string exn)
 
   let parse_registry_entry content =
@@ -49,8 +50,7 @@ module Registry_poll = struct
             (function
               | Csexp.List [ Csexp.Atom "root"; Csexp.Atom r ] -> root := Some r
               | Csexp.List [ Csexp.Atom "pid"; Csexp.Atom p ] -> (
-                  try pid := Some (int_of_string p) 
-                  with 
+                  try pid := Some (int_of_string p) with
                   | Failure _ -> () (* Invalid integer format *)
                   | Invalid_argument _ -> ())
               | _ -> ())
@@ -64,9 +64,9 @@ module Registry_poll = struct
                Csexp.List [ Csexp.Atom "pid"; Csexp.Atom pid_str ];
              ]) ->
           (* Version 2 format *)
-          let pid = 
-            try Some (int_of_string pid_str) 
-            with Failure _ | Invalid_argument _ -> None 
+          let pid =
+            try Some (int_of_string pid_str)
+            with Failure _ | Invalid_argument _ -> None
           in
           Some { root; pid; socket = None }
       | _ -> None
@@ -77,7 +77,7 @@ module Registry_poll = struct
 
   let poll ~fs registry_path =
     try
-      let entries = Eio.Path.read_dir (Eio.Path.(fs / registry_path)) in
+      let entries = Eio.Path.read_dir Eio.Path.(fs / registry_path) in
       let instances = ref [] in
       List.iter
         (fun entry ->
@@ -95,10 +95,10 @@ module Registry_poll = struct
                     in
                     let inst =
                       try
-                        ignore (Eio.Path.load (Eio.Path.(fs / socket_path)));
+                        ignore (Eio.Path.load Eio.Path.(fs / socket_path));
                         { inst with socket = Some socket_path }
-                      with 
-                      | Eio.Io (Eio.Fs.E Not_found _, _) -> inst
+                      with
+                      | Eio.Io (Eio.Fs.E (Not_found _), _) -> inst
                       | _ -> inst
                     in
                     instances := inst :: !instances
@@ -106,8 +106,8 @@ module Registry_poll = struct
             | Error _ -> ())
         entries;
       Ok !instances
-    with 
-    | Eio.Io (Eio.Fs.E Not_found _, _) -> Ok []
+    with
+    | Eio.Io (Eio.Fs.E (Not_found _), _) -> Ok []
     | exn -> Error (Printexc.to_string exn)
 end
 
@@ -198,34 +198,27 @@ let write_csexp buf_write csexp =
 let read_csexp buf_read =
   let module Lexer = Csexp.Parser.Lexer in
   let module Stack = Csexp.Parser.Stack in
-  
   let lexer = Lexer.create () in
   let rec loop stack =
     match Buf_read.peek_char buf_read with
     | None ->
         Lexer.feed_eoi lexer;
         Error "Unexpected end of input"
-    | Some _ ->
+    | Some _ -> (
         let c = Buf_read.any_char buf_read in
         let token = Lexer.feed lexer c in
         match token with
-        | Atom n ->
+        | Atom n -> (
             (* Read n bytes for the atom *)
             let atom_bytes = Buf_read.take n buf_read in
             let stack = Stack.add_atom atom_bytes stack in
-            (match stack with
-            | Sexp (sexp, Empty) -> Ok sexp
-            | _ -> loop stack)
-        | Lparen | Rparen | Await as token ->
+            match stack with Sexp (sexp, Empty) -> Ok sexp | _ -> loop stack)
+        | (Lparen | Rparen | Await) as token -> (
             let stack = Stack.add_token token stack in
-            match stack with
-            | Sexp (sexp, Empty) -> Ok sexp
-            | _ -> loop stack
+            match stack with Sexp (sexp, Empty) -> Ok sexp | _ -> loop stack))
   in
-  
-  try
-    loop Stack.Empty
-  with
+
+  try loop Stack.Empty with
   | End_of_file -> Error "Connection closed"
   | exn -> Error (Printf.sprintf "Parse error: %s" (Printexc.to_string exn))
 
@@ -233,7 +226,7 @@ let read_csexp buf_read =
 let initialize_session ~flow ~buf_read ~buf_write =
   let id = Drpc.Id.make (Csexp.Atom "ocaml-mcp") in
   let request_id = Request_id.create () in
-  
+
   (* Send initialize request *)
   let req_id = Request_id.next request_id in
   let csexp =
@@ -257,13 +250,14 @@ let initialize_session ~flow ~buf_read ~buf_write =
       Ok { flow; buf_read; buf_write; id; request_id }
   | Ok (Csexp.List [ Csexp.Atom "response"; _; Csexp.Atom "error"; msg ]) ->
       let error_msg =
-        match msg with 
-        | Csexp.Atom s -> s 
+        match msg with
+        | Csexp.Atom s -> s
         | Csexp.List _ -> "Complex error response"
       in
       Error (Printf.sprintf "Initialize failed: %s" error_msg)
-  | Ok sexp -> 
-      Error (Printf.sprintf "Invalid initialize response: %s" (Csexp.to_string sexp))
+  | Ok sexp ->
+      Error
+        (Printf.sprintf "Invalid initialize response: %s" (Csexp.to_string sexp))
   | Error msg -> Error msg
 
 (* Connect to a Dune instance *)
@@ -283,8 +277,9 @@ let connect_to_instance ~sw ~net instance =
             Eio.Flow.close socket;
             Error msg
       with
-      | Eio.Io _ as exn -> 
-          Error (Printf.sprintf "Connection failed: %s" (Printexc.to_string exn))
+      | Eio.Io _ as exn ->
+          Error
+            (Printf.sprintf "Connection failed: %s" (Printexc.to_string exn))
       | exn -> Error (Printexc.to_string exn))
 
 (* Subscribe to diagnostics and progress *)
@@ -474,7 +469,7 @@ let process_messages t session =
                     | [] -> None
                     | Csexp.List [ Csexp.Atom n; Csexp.Atom v ] :: _
                       when n = name -> (
-                              try Some (int_of_string v) 
+                        try Some (int_of_string v)
                         with Failure _ | Invalid_argument _ -> None)
                     | _ :: rest -> find rest
                   in
@@ -496,8 +491,9 @@ let process_messages t session =
   with
   | End_of_file -> false
   | Failure _ | Invalid_argument _ -> true
-  | exn -> 
-      Log.debug (fun m -> m "Unexpected error in process_messages: %s" (Printexc.to_string exn));
+  | exn ->
+      Log.debug (fun m ->
+          m "Unexpected error in process_messages: %s" (Printexc.to_string exn));
       true
 
 (* Poll for Dune instances and connect if found *)

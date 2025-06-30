@@ -2,6 +2,7 @@
 
 (* Setup logging *)
 let src = Logs.Src.create "mcp.eio.connection" ~doc:"MCP Eio Connection logging"
+
 module Log = (val Logs.src_log src : Logs.LOG)
 
 type transport = {

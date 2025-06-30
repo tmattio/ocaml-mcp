@@ -126,7 +126,7 @@ let request t req =
   let promise, resolver = Promise.create () in
   let callback result = Promise.resolve resolver result in
   Mcp_eio.Connection.send_request t.connection t.client req callback;
-  
+
   (* Process messages until we get our response *)
   let rec wait_for_response () =
     if Promise.is_resolved promise then ()
@@ -140,7 +140,7 @@ let request t req =
           wait_for_response ()
   in
   wait_for_response ();
-  
+
   match Promise.await promise with
   | Ok json -> json
   | Error _err -> failwith "Request failed: JSON-RPC error"
@@ -256,11 +256,9 @@ let with_client ~transport_config f =
 
   (* Connect client *)
   let client = connect ~sw ~connection ~config:default_config in
-  
+
   (* Run the function and ensure cleanup *)
-  Fun.protect
-    ~finally:(fun () -> close client)
-    (fun () -> f client)
+  Fun.protect ~finally:(fun () -> close client) (fun () -> f client)
 
 let format_content content =
   match content with
@@ -311,79 +309,80 @@ let parse_transport args =
 
 let list_cmd transport_config what =
   with_client ~transport_config (fun client ->
-    match String.lowercase_ascii what with
-    | "resources" ->
-        let result = list_resources client () in
-        printf "Resources (%d):\n" (List.length result.resources);
-        List.iter
-          (fun r ->
-            printf "- %s: %s\n" r.Mcp.Types.Resource.uri
-              (Option.value r.Mcp.Types.Resource.description
-                 ~default:r.Mcp.Types.Resource.name))
-          result.resources
-    | "tools" ->
-        let result = list_tools client () in
-        printf "Tools (%d):\n" (List.length result.tools);
-        List.iter
-          (fun t ->
-            printf "- %s: %s\n" t.Mcp.Types.Tool.name
-              (Option.value t.Mcp.Types.Tool.description ~default:"No description"))
-          result.tools
-    | "prompts" ->
-        let result = list_prompts client () in
-        printf "Prompts (%d):\n" (List.length result.prompts);
-        List.iter
-          (fun p ->
-            printf "- %s: %s\n" p.Mcp.Types.Prompt.name
-              (Option.value p.Mcp.Types.Prompt.description
-                 ~default:"No description"))
-          result.prompts
-    | _ ->
-        eprintf "Unknown list target: %s\n" what;
-        exit 1)
+      match String.lowercase_ascii what with
+      | "resources" ->
+          let result = list_resources client () in
+          printf "Resources (%d):\n" (List.length result.resources);
+          List.iter
+            (fun r ->
+              printf "- %s: %s\n" r.Mcp.Types.Resource.uri
+                (Option.value r.Mcp.Types.Resource.description
+                   ~default:r.Mcp.Types.Resource.name))
+            result.resources
+      | "tools" ->
+          let result = list_tools client () in
+          printf "Tools (%d):\n" (List.length result.tools);
+          List.iter
+            (fun t ->
+              printf "- %s: %s\n" t.Mcp.Types.Tool.name
+                (Option.value t.Mcp.Types.Tool.description
+                   ~default:"No description"))
+            result.tools
+      | "prompts" ->
+          let result = list_prompts client () in
+          printf "Prompts (%d):\n" (List.length result.prompts);
+          List.iter
+            (fun p ->
+              printf "- %s: %s\n" p.Mcp.Types.Prompt.name
+                (Option.value p.Mcp.Types.Prompt.description
+                   ~default:"No description"))
+            result.prompts
+      | _ ->
+          eprintf "Unknown list target: %s\n" what;
+          exit 1)
 
 let call_cmd transport_config tool_name args_json =
   with_client ~transport_config (fun client ->
-    let arguments =
-      Option.map
-        (fun json_str ->
-          try Yojson.Safe.from_string json_str
-          with Yojson.Json_error msg ->
-            eprintf "Invalid JSON: %s\n" msg;
-            exit 1)
-        args_json
-    in
+      let arguments =
+        Option.map
+          (fun json_str ->
+            try Yojson.Safe.from_string json_str
+            with Yojson.Json_error msg ->
+              eprintf "Invalid JSON: %s\n" msg;
+              exit 1)
+          args_json
+      in
 
-    let result = call_tool client ~name:tool_name ?arguments () in
+      let result = call_tool client ~name:tool_name ?arguments () in
 
-    List.iter
-      (fun content -> printf "%s\n" (format_content content))
-      result.content)
+      List.iter
+        (fun content -> printf "%s\n" (format_content content))
+        result.content)
 
 let read_cmd transport_config uri =
   with_client ~transport_config (fun client ->
-    let result = read_resource client ~uri in
-    printf "Resource contents:\n";
-    List.iter
-      (fun content ->
-        printf "[%s] %s\n" content.Mcp.Types.Content.uri
-          (Option.value content.text ~default:"(binary content)"))
-      result.contents)
+      let result = read_resource client ~uri in
+      printf "Resource contents:\n";
+      List.iter
+        (fun content ->
+          printf "[%s] %s\n" content.Mcp.Types.Content.uri
+            (Option.value content.text ~default:"(binary content)"))
+        result.contents)
 
 let info_cmd transport_config =
   with_client ~transport_config (fun client ->
-    let info = server_info client in
-    let caps = capabilities client in
+      let info = server_info client in
+      let caps = capabilities client in
 
-    printf "Server: %s v%s\n" info.name info.version;
-    printf "\nCapabilities:\n";
+      printf "Server: %s v%s\n" info.name info.version;
+      printf "\nCapabilities:\n";
 
-    if caps.tools <> None then printf "- Tools\n";
-    if caps.resources <> None then printf "- Resources\n";
-    if caps.prompts <> None then printf "- Prompts\n";
-    if caps.logging <> None then printf "- Logging\n";
-    if caps.completions <> None then printf "- Completions\n";
-    if caps.experimental <> None then printf "- Experimental\n")
+      if caps.tools <> None then printf "- Tools\n";
+      if caps.resources <> None then printf "- Resources\n";
+      if caps.prompts <> None then printf "- Prompts\n";
+      if caps.logging <> None then printf "- Logging\n";
+      if caps.completions <> None then printf "- Completions\n";
+      if caps.experimental <> None then printf "- Experimental\n")
 
 let () =
   let args = List.tl (Array.to_list Sys.argv) in
