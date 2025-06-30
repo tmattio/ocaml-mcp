@@ -1,8 +1,7 @@
 (** OCaml MCP Server.
 
     This server provides OCaml development tools through the Model Context
-    Protocol, integrating with Dune build system and Merlin for code
-    intelligence.
+    Protocol, integrating with Dune build system for code intelligence.
 
     {1 Configuration} *)
 
@@ -10,7 +9,6 @@ type config = {
   project_root : string option;
       (** Project root directory. Auto-detected if None. *)
   enable_dune : bool;  (** Enable Dune RPC for build status and diagnostics. *)
-  enable_merlin : bool;  (** Enable Merlin for code intelligence. *)
 }
 
 val default_config : config
@@ -25,7 +23,7 @@ val create_server :
   Mcp_sdk.Server.t
 (** [create_server ~sw ~env ~config] creates MCP server using the SDK.
 
-    Initializes Dune RPC polling and Merlin integration based on config. *)
+    Initializes Dune RPC polling based on config. *)
 
 val run_stdio : env:Eio_unix.Stdenv.base -> config:config -> unit
 (** [run_stdio ~env ~config] runs server on stdin/stdout. *)

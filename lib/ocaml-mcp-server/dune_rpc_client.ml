@@ -1,9 +1,26 @@
-(** Dune RPC client with registry polling *)
+(** Dune RPC client with registry polling using Eio *)
 
 open Eio
 
 (* Import Dune RPC types *)
 module Drpc = Dune_rpc.V1
+
+(* Setup logging *)
+let src = Logs.Src.create "dune-rpc-client" ~doc:"Dune RPC Client logging"
+module Log = (val Logs.src_log src : Logs.LOG)
+
+(* Request ID counter *)
+module Request_id = struct
+  type t = { mutable counter : int; mutex : Eio.Mutex.t }
+  
+  let create () = { counter = 0; mutex = Eio.Mutex.create () }
+  
+  let next t =
+    Eio.Mutex.use_rw ~protect:true t.mutex (fun () ->
+      let id = t.counter in
+      t.counter <- t.counter + 1;
+      Printf.sprintf "dune-rpc-%d" id)
+end
 
 (* Registry polling module following OCaml LSP pattern *)
 module Registry_poll = struct
@@ -13,18 +30,13 @@ module Registry_poll = struct
     socket : string option;
   }
 
-  let read_file path =
+  let read_file ~fs path =
     try
-      let ch = open_in_bin path in
-      let content =
-        try really_input_string ch (in_channel_length ch)
-        with exn ->
-          close_in ch;
-          raise exn
-      in
-      close_in ch;
+      let content = Eio.Path.load (Eio.Path.(fs / path)) in
       Ok content
-    with Sys_error msg -> Error msg
+    with 
+    | Eio.Io (Eio.Fs.E Not_found _, _) -> Error "File not found"
+    | exn -> Error (Printexc.to_string exn)
 
   let parse_registry_entry content =
     try
@@ -37,7 +49,10 @@ module Registry_poll = struct
             (function
               | Csexp.List [ Csexp.Atom "root"; Csexp.Atom r ] -> root := Some r
               | Csexp.List [ Csexp.Atom "pid"; Csexp.Atom p ] -> (
-                  try pid := Some (int_of_string p) with _ -> ())
+                  try pid := Some (int_of_string p) 
+                  with 
+                  | Failure _ -> () (* Invalid integer format *)
+                  | Invalid_argument _ -> ())
               | _ -> ())
             fields;
           Option.map (fun r -> { root = r; pid = !pid; socket = None }) !root
@@ -49,43 +64,51 @@ module Registry_poll = struct
                Csexp.List [ Csexp.Atom "pid"; Csexp.Atom pid_str ];
              ]) ->
           (* Version 2 format *)
-          let pid = try Some (int_of_string pid_str) with _ -> None in
+          let pid = 
+            try Some (int_of_string pid_str) 
+            with Failure _ | Invalid_argument _ -> None 
+          in
           Some { root; pid; socket = None }
       | _ -> None
-    with _ -> None
+    with
+    | Csexp.Parser.Parse_error _ -> None
+    | Invalid_argument _ -> None
+    | _ -> None
 
-  let poll registry_path =
-    if not (Sys.file_exists registry_path && Sys.is_directory registry_path)
-    then Ok []
-    else
-      try
-        let entries = Sys.readdir registry_path in
-        let instances = ref [] in
-        Array.iter
-          (fun entry ->
-            if
-              (not (String.starts_with ~prefix:"." entry))
-              && not (String.ends_with ~suffix:".socket" entry)
-            then
-              let entry_path = Filename.concat registry_path entry in
-              match read_file entry_path with
-              | Ok content -> (
-                  match parse_registry_entry content with
-                  | Some inst ->
-                      let socket_path =
-                        Filename.concat registry_path (entry ^ ".socket")
-                      in
-                      let inst =
-                        if Sys.file_exists socket_path then
-                          { inst with socket = Some socket_path }
-                        else inst
-                      in
-                      instances := inst :: !instances
-                  | None -> ())
-              | Error _ -> ())
-          entries;
-        Ok !instances
-      with exn -> Error (Printexc.to_string exn)
+  let poll ~fs registry_path =
+    try
+      let entries = Eio.Path.read_dir (Eio.Path.(fs / registry_path)) in
+      let instances = ref [] in
+      List.iter
+        (fun entry ->
+          if
+            (not (String.starts_with ~prefix:"." entry))
+            && not (String.ends_with ~suffix:".socket" entry)
+          then
+            let entry_path = Filename.concat registry_path entry in
+            match read_file ~fs entry_path with
+            | Ok content -> (
+                match parse_registry_entry content with
+                | Some inst ->
+                    let socket_path =
+                      Filename.concat registry_path (entry ^ ".socket")
+                    in
+                    let inst =
+                      try
+                        ignore (Eio.Path.load (Eio.Path.(fs / socket_path)));
+                        { inst with socket = Some socket_path }
+                      with 
+                      | Eio.Io (Eio.Fs.E Not_found _, _) -> inst
+                      | _ -> inst
+                    in
+                    instances := inst :: !instances
+                | None -> ())
+            | Error _ -> ())
+        entries;
+      Ok !instances
+    with 
+    | Eio.Io (Eio.Fs.E Not_found _, _) -> Ok []
+    | exn -> Error (Printexc.to_string exn)
 end
 
 type diagnostic = {
@@ -104,16 +127,17 @@ type progress =
   | Success
 
 type session = {
-  socket : Unix.file_descr;
-  input : in_channel;
-  output : out_channel;
+  flow : Eio.Flow.two_way_ty Eio.Resource.t;
+  buf_read : Buf_read.t;
+  buf_write : Buf_write.t;
   id : Drpc.Id.t; [@warning "-69"]
+  request_id : Request_id.t;
 }
 
 type connection_state = Disconnected | Connected of session | Closed
 
 type t = {
-  sw : Switch.t; [@warning "-69"]
+  sw : Switch.t;
   root : string;
   mutable state : connection_state;
   registry_path : string option;
@@ -165,80 +189,137 @@ let find_matching_instance instances root =
              || root.[String.length inst_root] = '/'))
         instances
 
+(* Write a Csexp to the buffer *)
+let write_csexp buf_write csexp =
+  let s = Csexp.to_string csexp in
+  Buf_write.string buf_write s
+
+(* Read a Csexp from the buffer using the Parser module for robust parsing *)
+let read_csexp buf_read =
+  let module Lexer = Csexp.Parser.Lexer in
+  let module Stack = Csexp.Parser.Stack in
+  
+  let lexer = Lexer.create () in
+  let rec loop stack =
+    match Buf_read.peek_char buf_read with
+    | None ->
+        Lexer.feed_eoi lexer;
+        Error "Unexpected end of input"
+    | Some _ ->
+        let c = Buf_read.any_char buf_read in
+        let token = Lexer.feed lexer c in
+        match token with
+        | Atom n ->
+            (* Read n bytes for the atom *)
+            let atom_bytes = Buf_read.take n buf_read in
+            let stack = Stack.add_atom atom_bytes stack in
+            (match stack with
+            | Sexp (sexp, Empty) -> Ok sexp
+            | _ -> loop stack)
+        | Lparen | Rparen | Await as token ->
+            let stack = Stack.add_token token stack in
+            match stack with
+            | Sexp (sexp, Empty) -> Ok sexp
+            | _ -> loop stack
+  in
+  
+  try
+    loop Stack.Empty
+  with
+  | End_of_file -> Error "Connection closed"
+  | exn -> Error (Printf.sprintf "Parse error: %s" (Printexc.to_string exn))
+
 (* Initialize RPC session *)
-let initialize_session ~socket ~input ~output =
+let initialize_session ~flow ~buf_read ~buf_write =
   let id = Drpc.Id.make (Csexp.Atom "ocaml-mcp") in
+  let request_id = Request_id.create () in
+  
   (* Send initialize request *)
+  let req_id = Request_id.next request_id in
   let csexp =
     Csexp.List
       [
         Csexp.Atom "request";
-        Csexp.List [ Csexp.Atom "id"; Csexp.Atom "ocaml-mcp" ];
+        Csexp.List [ Csexp.Atom "id"; Csexp.Atom req_id ];
         Csexp.Atom "initialize";
         Csexp.List [ Csexp.Atom "version"; Csexp.Atom "1.0" ];
       ]
   in
-  Csexp.to_channel output csexp;
-  flush output;
+  write_csexp buf_write csexp;
+  Buf_write.flush buf_write;
+  (* Write the buffer contents to the flow *)
+  let s = Csexp.to_string csexp in
+  Eio.Flow.copy_string s flow;
 
   (* Read response *)
-  match Csexp.input input with
+  match read_csexp buf_read with
   | Ok (Csexp.List [ Csexp.Atom "response"; _; Csexp.Atom "ok"; _ ]) ->
-      Ok { socket; input; output; id }
+      Ok { flow; buf_read; buf_write; id; request_id }
   | Ok (Csexp.List [ Csexp.Atom "response"; _; Csexp.Atom "error"; msg ]) ->
       let error_msg =
-        match msg with Csexp.Atom s -> s | Csexp.List _ -> "Complex error"
+        match msg with 
+        | Csexp.Atom s -> s 
+        | Csexp.List _ -> "Complex error response"
       in
-      Error error_msg
-  | Ok _ -> Error "Invalid initialize response"
+      Error (Printf.sprintf "Initialize failed: %s" error_msg)
+  | Ok sexp -> 
+      Error (Printf.sprintf "Invalid initialize response: %s" (Csexp.to_string sexp))
   | Error msg -> Error msg
 
 (* Connect to a Dune instance *)
-let connect_to_instance instance =
+let connect_to_instance ~sw ~net instance =
   match instance.Registry_poll.socket with
   | None -> Error "No socket path available"
   | Some socket_path -> (
       try
-        let socket = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
-        Unix.connect socket (Unix.ADDR_UNIX socket_path);
-        let input = Unix.in_channel_of_descr socket in
-        let output = Unix.out_channel_of_descr socket in
-        match initialize_session ~socket ~input ~output with
+        let addr = `Unix socket_path in
+        let socket = Eio.Net.connect ~sw net addr in
+        let flow = (socket :> Eio.Flow.two_way_ty Eio.Resource.t) in
+        let buf_read = Buf_read.of_flow ~max_size:Int.max_int flow in
+        let buf_write = Buf_write.create 4096 in
+        match initialize_session ~flow ~buf_read ~buf_write with
         | Ok session -> Ok session
         | Error msg ->
-            Unix.close socket;
+            Eio.Flow.close socket;
             Error msg
       with
-      | Unix.Unix_error (error, _, _) -> Error (Unix.error_message error)
+      | Eio.Io _ as exn -> 
+          Error (Printf.sprintf "Connection failed: %s" (Printexc.to_string exn))
       | exn -> Error (Printexc.to_string exn))
 
 (* Subscribe to diagnostics and progress *)
 let subscribe_to_events session _t =
   (* Subscribe to diagnostics *)
+  let diag_req_id = Request_id.next session.request_id in
   let diag_msg =
     Csexp.List
       [
         Csexp.Atom "request";
-        Csexp.List [ Csexp.Atom "id"; Csexp.Atom "subscribe-diagnostics" ];
+        Csexp.List [ Csexp.Atom "id"; Csexp.Atom diag_req_id ];
         Csexp.Atom "subscribe";
         Csexp.Atom "diagnostics";
       ]
   in
-  Csexp.to_channel session.output diag_msg;
-  flush session.output;
+  write_csexp session.buf_write diag_msg;
+  Buf_write.flush session.buf_write;
+  let s = Csexp.to_string diag_msg in
+  Eio.Flow.copy_string s session.flow;
 
   (* Subscribe to progress *)
+  let progress_req_id = Request_id.next session.request_id in
   let progress_msg =
     Csexp.List
       [
         Csexp.Atom "request";
-        Csexp.List [ Csexp.Atom "id"; Csexp.Atom "subscribe-progress" ];
+        Csexp.List [ Csexp.Atom "id"; Csexp.Atom progress_req_id ];
         Csexp.Atom "subscribe";
         Csexp.Atom "progress";
       ]
   in
-  Csexp.to_channel session.output progress_msg;
-  flush session.output
+  write_csexp session.buf_write progress_msg;
+  Buf_write.flush session.buf_write;
+  let s = Csexp.to_string progress_msg in
+  Eio.Flow.copy_string s session.flow
 
 (* Parse diagnostic from Csexp - based on Dune RPC protocol *)
 let parse_diagnostic csexp =
@@ -310,7 +391,7 @@ let parse_diagnostic csexp =
 (* Process incoming messages *)
 let process_messages t session =
   try
-    match Csexp.input session.input with
+    match read_csexp session.buf_read with
     | Error _ -> false (* Connection closed *)
     | Ok csexp ->
         (* Parse different message types *)
@@ -393,7 +474,8 @@ let process_messages t session =
                     | [] -> None
                     | Csexp.List [ Csexp.Atom n; Csexp.Atom v ] :: _
                       when n = name -> (
-                        try Some (int_of_string v) with _ -> None)
+                              try Some (int_of_string v) 
+                        with Failure _ | Invalid_argument _ -> None)
                     | _ :: rest -> find rest
                   in
                   find fields
@@ -413,7 +495,10 @@ let process_messages t session =
         true
   with
   | End_of_file -> false
-  | _ -> true
+  | Failure _ | Invalid_argument _ -> true
+  | exn -> 
+      Log.debug (fun m -> m "Unexpected error in process_messages: %s" (Printexc.to_string exn));
+      true
 
 (* Poll for Dune instances and connect if found *)
 let poll_and_connect t =
@@ -424,7 +509,9 @@ let poll_and_connect t =
           match t.registry_path with
           | None -> ()
           | Some registry_path -> (
-              match Registry_poll.poll registry_path with
+              let fs = Eio.Stdenv.fs t.env in
+              let net = Eio.Stdenv.net t.env in
+              match Registry_poll.poll ~fs registry_path with
               | Error msg ->
                   if t.last_poll_error <> Some msg then
                     t.last_poll_error <- Some msg (* Log error if needed *)
@@ -433,7 +520,7 @@ let poll_and_connect t =
                   match find_matching_instance instances t.root with
                   | None -> ()
                   | Some instance -> (
-                      match connect_to_instance instance with
+                      match connect_to_instance ~sw:t.sw ~net instance with
                       | Ok session ->
                           subscribe_to_events session t;
                           t.state <- Connected session
@@ -453,7 +540,7 @@ let run t =
         if not (process_messages t session) then
           (* Connection lost *)
           Eio.Mutex.use_rw ~protect:true t.mutex (fun () ->
-              Unix.close session.socket;
+              Eio.Flow.shutdown session.flow `All;
               t.state <- Disconnected)
     | _ -> ());
 
@@ -480,6 +567,6 @@ let close t =
   Eio.Mutex.use_rw ~protect:true t.mutex (fun () ->
       match t.state with
       | Connected session ->
-          Unix.close session.socket;
+          Eio.Flow.shutdown session.flow `All;
           t.state <- Closed
       | _ -> t.state <- Closed)
