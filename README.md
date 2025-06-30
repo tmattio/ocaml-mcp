@@ -34,7 +34,7 @@ mcp call "ocaml/module-signature" --socket 8080 \
 - Server-to-client request handling (sampling, elicitation, roots)
 - High-level SDK with type-safe tool/resource/prompt registration
 - Dynamic JSON schema generation from OCaml types
-- OCaml development tools (Dune build status, Merlin signatures)
+- OCaml development tools (Dune build status, module signatures from build artifacts)
 - Full compliance with MCP 2025-06-18 specification
 
 ### 🚧 In Progress / Missing
@@ -43,8 +43,10 @@ mcp call "ocaml/module-signature" --socket 8080 \
 - **OAuth 2.1 authentication** - Security for production use
 
 **Feature Parity:**
-- Request lifecycle (timeouts, cancellation, progress)
-- Tool output schema validation  
+- Request lifecycle:
+  - Timeouts
+  - **Cancellation** - Currently not supported. The protocol defines `$/cancel` notifications, but implementing proper cancellation requires thread-safe cancellation tokens and checking cancellation status during long operations
+  - Progress tracking (basic support implemented)
 - Argument completion support
 - WebSocket and SSE transports
 - Some client helper functions (resources/subscribe, completion/complete, logging/setLevel, ping)
