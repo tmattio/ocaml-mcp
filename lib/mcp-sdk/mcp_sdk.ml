@@ -1,6 +1,10 @@
 module Types = Mcp.Types
 module Protocol = Mcp.Protocol
 
+(* Setup logging *)
+let src = Logs.Src.create "mcp.sdk" ~doc:"MCP SDK logging"
+module Log = (val Logs.src_log src : Logs.LOG)
+
 module Context = struct
   type t = {
     req_id : Types.request_id;
@@ -11,6 +15,40 @@ module Context = struct
   let request_id t = t.req_id
   let progress_token t = t.prog_token
   let send_notification t notif = t.send_notif notif
+  
+  let report_progress t ~progress ?total () =
+    match t.prog_token with
+    | None -> ()
+    | Some token ->
+        let progress_params = 
+          { Mcp.Notification.Progress.progress_token = token; 
+            progress; 
+            total 
+          }
+        in
+        send_notification t (Mcp.Notification.Progress progress_params)
+end
+
+module Tool_result = struct
+  let create ?content ?structured_content ?is_error () =
+    {
+      Mcp.Request.Tools.Call.content = Option.value content ~default:[];
+      Mcp.Request.Tools.Call.structured_content = structured_content;
+      Mcp.Request.Tools.Call.is_error = is_error;
+    }
+    
+  let text s =
+    create ~content:[Mcp.Types.Content.Text { type_ = "text"; text = s }] ()
+    
+  let error msg =
+    create ~content:[Mcp.Types.Content.Text { type_ = "text"; text = msg }] ~is_error:true ()
+    
+  let structured ?text json =
+    let content = match text with
+      | None -> []
+      | Some t -> [Mcp.Types.Content.Text { type_ = "text"; text = t }]
+    in
+    create ~content ~structured_content:json ()
 end
 
 module Server = struct
@@ -23,6 +61,8 @@ module Server = struct
   type tool_handler = {
     info : handler_info;
     schema : Yojson.Safe.t option;
+    output_schema : Yojson.Safe.t option;
+    annotations : Mcp.Types.Tool.annotation option;
     handler :
       Yojson.Safe.t option ->
       Context.t ->
@@ -61,12 +101,23 @@ module Server = struct
       (Mcp.Request.Prompts.Get.result, string) result;
   }
 
+  type subscription_handler = {
+    on_subscribe : string -> Context.t -> (unit, string) result;
+    on_unsubscribe : string -> Context.t -> (unit, string) result;
+  }
+
+  type pagination_config = {
+    page_size : int;
+  }
+
   type t = {
     server_info : Types.ServerInfo.t;
     mutable capabilities : Types.Capabilities.server;
     tools : (string, tool_handler) Hashtbl.t;
     resources : (string, resource_handler) Hashtbl.t;
     prompts : (string, prompt_handler) Hashtbl.t;
+    mutable subscription_handler : subscription_handler option;
+    pagination_config : pagination_config option;
   }
 
   module type Json_converter = sig
@@ -86,22 +137,45 @@ module Server = struct
           resources = None;
           tools = None;
           completions = None;
-        }) () =
+        }) 
+      ?pagination_config
+      () =
     {
       server_info;
       capabilities;
       tools = Hashtbl.create 16;
       resources = Hashtbl.create 16;
       prompts = Hashtbl.create 16;
+      subscription_handler = None;
+      pagination_config;
     }
 
   (* Helper function for tools with no arguments *)
-  let tool_no_args t name ?title ?description handler =
-    let typed_handler _ ctx = handler () ctx in
+  let tool_no_args t name ?title ?description ?output_schema ?annotations handler =
+    let typed_handler _ ctx = 
+      let result = handler () ctx in
+      (* Validate output if schema provided *)
+      (match (result, output_schema) with
+      | Ok res, Some schema when res.Mcp.Request.Tools.Call.structured_content <> None ->
+          let content = Option.get res.Mcp.Request.Tools.Call.structured_content in
+          let basic_content = Yojson.Safe.to_basic content in
+          let basic_schema = Yojson.Safe.to_basic schema in
+          (match Jsonschema.create_validator_from_json ~schema:basic_schema () with
+          | Error err -> Error (Format.asprintf "Invalid output schema: %a" Jsonschema.pp_compile_error err)
+          | Ok validator ->
+              match Jsonschema.validate validator basic_content with
+          | Ok () -> result
+          | Error error -> 
+              Error (Printf.sprintf "Output validation failed: %s" 
+                (Jsonschema.Validation_error.to_string error)))
+      | _ -> result)
+    in
     let th : tool_handler =
       {
         info = { name; title; description };
         schema = None;
+        output_schema;
+        annotations;
         handler = typed_handler;
       }
     in
@@ -115,29 +189,62 @@ module Server = struct
       string ->
       ?title:string ->
       ?description:string ->
+      ?output_schema:Yojson.Safe.t ->
+      ?annotations:Mcp.Types.Tool.annotation ->
       ?args:(module Json_converter with type t = a) ->
       (a -> Context.t -> (Mcp.Request.Tools.Call.result, string) result) ->
       unit =
-   fun t name ?title ?description ?args handler ->
+   fun t name ?title ?description ?output_schema ?annotations ?args handler ->
     match args with
     | None ->
-        tool_no_args t name ?title ?description
+        tool_no_args t name ?title ?description ?output_schema ?annotations
           (Obj.magic handler
             : unit ->
               Context.t ->
               (Mcp.Request.Tools.Call.result, string) result)
     | Some (module Args : Json_converter with type t = a) ->
         let schema = Args.schema () in
+        let basic_schema = Yojson.Safe.to_basic schema in
         let typed_handler json_opt ctx =
           let json = Option.value json_opt ~default:(`Assoc []) in
-          match Args.of_yojson json with
-          | Ok args -> handler args ctx
-          | Error e -> Error ("Failed to parse arguments: " ^ e)
+          (* Validate input against schema first *)
+          let basic_json = Yojson.Safe.to_basic json in
+          (match Jsonschema.create_validator_from_json ~schema:basic_schema () with
+          | Error err ->
+              Error (Format.asprintf "Invalid input schema: %a" Jsonschema.pp_compile_error err)
+          | Ok validator ->
+              match Jsonschema.validate validator basic_json with
+              | Error error ->
+                  Error (Printf.sprintf "Input validation failed: %s" 
+                    (Jsonschema.Validation_error.to_string error))
+          | Ok () ->
+              match Args.of_yojson json with
+              | Ok args -> 
+                  (* Call the handler *)
+                  let result = handler args ctx in
+                  (* Validate output if schema provided *)
+                  (match (result, output_schema) with
+                  | Ok res, Some schema when res.Mcp.Request.Tools.Call.structured_content <> None ->
+                      let content = Option.get res.Mcp.Request.Tools.Call.structured_content in
+                      let basic_content = Yojson.Safe.to_basic content in
+                      let basic_schema = Yojson.Safe.to_basic schema in
+                      (match Jsonschema.create_validator_from_json ~schema:basic_schema () with
+                      | Error err -> Error (Format.asprintf "Invalid output schema: %a" Jsonschema.pp_compile_error err)
+                      | Ok validator ->
+                          match Jsonschema.validate validator basic_content with
+                      | Ok () -> result
+                      | Error error -> 
+                          Error (Printf.sprintf "Output validation failed: %s" 
+                            (Jsonschema.Validation_error.to_string error)))
+                  | _ -> result)
+              | Error e -> Error ("Failed to parse arguments: " ^ e))
         in
         let th : tool_handler =
           {
             info = { name; title; description };
             schema = Some schema;
+            output_schema;
+            annotations;
             handler = typed_handler;
           }
         in
@@ -156,7 +263,11 @@ module Server = struct
     t.capabilities <-
       {
         t.capabilities with
-        resources = Some { subscribe = None; list_changed = None };
+        resources = 
+          Some { 
+            subscribe = Option.map (fun _ -> true) t.subscription_handler; 
+            list_changed = None 
+          };
       }
 
   let resource_template t name ~template ?description ?mime_type ?list_handler
@@ -177,7 +288,11 @@ module Server = struct
     t.capabilities <-
       {
         t.capabilities with
-        resources = Some { subscribe = None; list_changed = None };
+        resources = 
+          Some { 
+            subscribe = Option.map (fun _ -> true) t.subscription_handler; 
+            list_changed = None 
+          };
       }
 
   (* Helper function for prompts with no arguments *)
@@ -195,6 +310,22 @@ module Server = struct
       { t.capabilities with prompts = Some { list_changed = None } }
 
   (* Main prompt function *)
+  let set_subscription_handler t ~on_subscribe ~on_unsubscribe =
+    t.subscription_handler <- Some { on_subscribe; on_unsubscribe };
+    (* Update capabilities to indicate subscription support *)
+    t.capabilities <-
+      {
+        t.capabilities with
+        resources = 
+          Some { 
+            subscribe = Some true; 
+            list_changed = 
+              match t.capabilities.resources with
+              | Some r -> r.list_changed
+              | None -> None
+          };
+      }
+
   let prompt : type a.
       t ->
       string ->
@@ -230,54 +361,73 @@ module Server = struct
         t.capabilities <-
           { t.capabilities with prompts = Some { list_changed = None } }
 
-  let parse_uri_template template uri =
-    let rec extract_vars acc template =
-      match String.index_opt template '{' with
-      | None -> List.rev acc
-      | Some start -> (
-          match String.index_from_opt template start '}' with
-          | None -> List.rev acc
-          | Some end_ ->
-              let var_name =
-                String.sub template (start + 1) (end_ - start - 1)
-              in
-              let rest =
-                String.sub template (end_ + 1)
-                  (String.length template - end_ - 1)
-              in
-              extract_vars (var_name :: acc) rest)
-    in
-
-    let vars = extract_vars [] template in
-
-    let regex_pattern =
-      let escaped = String.split_on_char '{' template in
-      let parts =
-        List.mapi
-          (fun i part ->
-            if i = 0 then Str.quote part
-            else
-              match String.index_opt part '}' with
-              | None -> Str.quote part
-              | Some idx ->
-                  let after =
-                    String.sub part (idx + 1) (String.length part - idx - 1)
-                  in
-                  "\\([^/]+\\)" ^ Str.quote after)
-          escaped
-      in
-      String.concat "" parts
-    in
-
+  (* Pagination helpers *)
+  let decode_cursor cursor =
     try
-      let regex = Str.regexp regex_pattern in
-      if Str.string_match regex uri 0 then
-        let values =
-          List.mapi (fun i var -> (var, Str.matched_group (i + 1) uri)) vars
-        in
-        Some values
+      match Base64.decode cursor with
+      | Ok s -> (
+          match int_of_string_opt s with
+          | Some n -> Ok n
+          | None -> Error "Invalid cursor format")
+      | Error _ -> Error "Failed to decode cursor"
+    with _ -> Error "Invalid cursor"
+
+  let encode_cursor offset =
+    Base64.encode_string (string_of_int offset)
+
+  let paginate_list items cursor page_size =
+    let start_offset = 
+      match cursor with
+      | None -> 0
+      | Some c -> (
+          match decode_cursor c with
+          | Ok n -> n
+          | Error _ -> 0)
+    in
+    let total_items = List.length items in
+    let items_array = Array.of_list items in
+    let end_offset = min (start_offset + page_size) total_items in
+    let page_items = 
+      if start_offset < total_items then
+        Array.sub items_array start_offset (end_offset - start_offset)
+        |> Array.to_list
+      else []
+    in
+    let next_cursor =
+      if end_offset < total_items then
+        Some (encode_cursor end_offset)
       else None
-    with _ -> None
+    in
+    (page_items, next_cursor)
+
+  let parse_uri_template template uri =
+    (* Extract variable names from template *)
+    let var_regex = Re.Perl.compile_pat "\\{([^}]+)\\}" in
+    let vars = 
+      Re.all var_regex template
+      |> List.map (fun g -> Re.Group.get g 1)
+    in
+    
+    (* Build regex pattern from template *)
+    let pattern =
+      template
+      |> Re.replace_string (Re.Perl.compile_pat "\\{[^}]+\\}") ~by:"([^/]+)"
+      |> Re.Perl.re
+      |> Re.compile
+    in
+    
+    (* Try to match URI against pattern *)
+    match Re.exec_opt pattern uri with
+    | None -> None
+    | Some groups ->
+        try
+          let values = 
+            List.mapi (fun i var -> 
+              (var, Re.Group.get groups (i + 1))
+            ) vars
+          in
+          Some values
+        with Not_found -> None
 
   let to_mcp_server t =
     let send_notification_ref = ref (fun _ -> ()) in
@@ -300,8 +450,8 @@ module Server = struct
                 instructions = None;
               });
         on_tools_list =
-          (fun _params ->
-            let tools =
+          (fun params ->
+            let all_tools =
               Hashtbl.fold
                 (fun _name (h : tool_handler) acc ->
                   {
@@ -309,13 +459,19 @@ module Server = struct
                     title = h.info.title;
                     description = h.info.description;
                     input_schema = Option.value ~default:(`Assoc []) h.schema;
-                    output_schema = None;
-                    annotations = None;
+                    output_schema = h.output_schema;
+                    annotations = h.annotations;
                   }
                   :: acc)
                 t.tools []
             in
-            Ok { tools; next_cursor = None });
+            match t.pagination_config with
+            | None -> Ok { tools = all_tools; next_cursor = None }
+            | Some config ->
+                let tools, next_cursor = 
+                  paginate_list all_tools params.cursor config.page_size
+                in
+                Ok { tools; next_cursor });
         on_tools_call =
           (fun params ->
             match Hashtbl.find_opt t.tools params.name with
@@ -324,8 +480,8 @@ module Server = struct
                 let ctx = make_context (String "tool-call") None in
                 h.handler params.arguments ctx);
         on_resources_list =
-          (fun _params ->
-            let resources =
+          (fun params ->
+            let all_resources =
               Hashtbl.fold
                 (fun _name handler acc ->
                   match handler with
@@ -352,7 +508,13 @@ module Server = struct
                           | Error _ -> acc)))
                 t.resources []
             in
-            Ok { resources; next_cursor = None });
+            match t.pagination_config with
+            | None -> Ok { resources = all_resources; next_cursor = None }
+            | Some config ->
+                let resources, next_cursor = 
+                  paginate_list all_resources params.cursor config.page_size
+                in
+                Ok { resources; next_cursor });
         on_resources_templates_list =
           (fun _params ->
             let templates =
@@ -417,8 +579,8 @@ module Server = struct
                 | Some result -> result
                 | None -> Error ("Resource not found: " ^ params.uri)));
         on_prompts_list =
-          (fun _params ->
-            let prompts =
+          (fun params ->
+            let all_prompts =
               Hashtbl.fold
                 (fun _name h acc ->
                   {
@@ -442,7 +604,13 @@ module Server = struct
                   :: acc)
                 t.prompts []
             in
-            Ok { prompts; next_cursor = None });
+            match t.pagination_config with
+            | None -> Ok { prompts = all_prompts; next_cursor = None }
+            | Some config ->
+                let prompts, next_cursor = 
+                  paginate_list all_prompts params.cursor config.page_size
+                in
+                Ok { prompts; next_cursor });
         on_prompts_get =
           (fun params ->
             match Hashtbl.find_opt t.prompts params.name with
@@ -457,6 +625,20 @@ module Server = struct
                         (`Assoc (List.map (fun (k, v) -> (k, `String v)) args))
                 in
                 h.handler json_args ctx);
+        on_resources_subscribe =
+          (fun params ->
+            match t.subscription_handler with
+            | None -> Error "Resource subscriptions not supported"
+            | Some handler ->
+                let ctx = make_context (String "resource-subscribe") None in
+                handler.on_subscribe params.uri ctx);
+        on_resources_unsubscribe =
+          (fun params ->
+            match t.subscription_handler with
+            | None -> Error "Resource subscriptions not supported"
+            | Some handler ->
+                let ctx = make_context (String "resource-unsubscribe") None in
+                handler.on_unsubscribe params.uri ctx);
       }
     in
 

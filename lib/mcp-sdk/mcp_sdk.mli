@@ -21,6 +21,41 @@ module Context : sig
   (** [send_notification t notification] sends a notification to the client in
       the context of the current request. This is the preferred way to send
       progress updates or other related notifications. *)
+      
+  val report_progress : t -> progress:float -> ?total:float -> unit -> unit
+  (** [report_progress t ~progress ?total ()] sends a progress notification to the
+      client if a progress token was provided with the request. The [progress] 
+      parameter indicates the current progress value, and [total] optionally 
+      indicates the total amount of work. If no progress token is available, 
+      this function does nothing. *)
+end
+
+(** Helper functions for creating tool results *)
+module Tool_result : sig
+  val create :
+    ?content:Mcp.Types.Content.t list ->
+    ?structured_content:Yojson.Safe.t ->
+    ?is_error:bool ->
+    unit ->
+    Mcp.Request.Tools.Call.result
+  (** [create ?content ?structured_content ?is_error ()] creates a tool result.
+      
+      @param content Text or resource content to return
+      @param structured_content JSON data that conforms to the tool's output schema
+      @param is_error Whether this result represents an error *)
+      
+  val text : string -> Mcp.Request.Tools.Call.result
+  (** [text s] creates a simple text result *)
+  
+  val error : string -> Mcp.Request.Tools.Call.result
+  (** [error msg] creates an error result with the given message *)
+  
+  val structured : 
+    ?text:string -> 
+    Yojson.Safe.t -> 
+    Mcp.Request.Tools.Call.result
+  (** [structured ?text json] creates a result with structured content.
+      Optionally includes a text description. *)
 end
 
 (** A module for building a high-level, declarative MCP Server. *)
@@ -28,8 +63,16 @@ module Server : sig
   type t
   (** An opaque type representing the server configuration. *)
 
+  type pagination_config = {
+    page_size : int;
+  }
+  (** Configuration for pagination support *)
+
   val create :
-    server_info:ServerInfo.t -> ?capabilities:Capabilities.server -> unit -> t
+    server_info:ServerInfo.t -> 
+    ?capabilities:Capabilities.server -> 
+    ?pagination_config:pagination_config ->
+    unit -> t
   (** [create ~server_info ?capabilities ()] creates a new server builder.
       @param server_info The name and version of your server implementation.
       @param capabilities
@@ -52,10 +95,12 @@ module Server : sig
     string ->
     ?title:string ->
     ?description:string ->
+    ?output_schema:Yojson.Safe.t ->
+    ?annotations:Mcp.Types.Tool.annotation ->
     ?args:(module Json_converter with type t = 'args) ->
     ('args -> Context.t -> (Mcp.Request.Tools.Call.result, string) result) ->
     unit
-  (** [tool t name ?title ?description ?args handler] registers a tool.
+  (** [tool t name ?title ?description ?output_schema ?annotations ?args handler] registers a tool.
 
       The handler for the tool is type-safe. You define a record type for the
       tool's arguments, derive `yojson` serializers for it, and pass them as the
@@ -66,6 +111,8 @@ module Server : sig
       @param name The programmatic name of the tool (e.g., "file/write").
       @param title (optional) A human-readable display name for the tool.
       @param description (optional) A brief explanation of what the tool does.
+      @param output_schema (optional) JSON Schema defining the structure of the tool's output.
+      @param annotations (optional) Additional metadata like destructive hints.
       @param args
         (optional) A module implementing [Json_converter] for the argument type.
         If omitted, the tool takes no arguments.
@@ -110,6 +157,20 @@ module Server : sig
       @param read_handler
         The function to read a specific resource. It receives a list of
         key-value pairs parsed from the URI. *)
+
+  val set_subscription_handler :
+    t ->
+    on_subscribe:(string -> Context.t -> (unit, string) result) ->
+    on_unsubscribe:(string -> Context.t -> (unit, string) result) ->
+    unit
+  (** [set_subscription_handler t ~on_subscribe ~on_unsubscribe] registers handlers
+      for resource subscription requests.
+      
+      @param on_subscribe Called when a client subscribes to a resource URI
+      @param on_unsubscribe Called when a client unsubscribes from a resource URI
+      
+      Once set, the server will advertise subscription capability and handle
+      subscribe/unsubscribe requests for resources. *)
 
   val prompt :
     t ->
