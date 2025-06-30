@@ -1,7 +1,10 @@
 (** Stdio transport implementation *)
 
 open Eio
-module Log = Logging
+
+(* Setup logging *)
+let src = Logs.Src.create "mcp.eio.stdio" ~doc:"MCP Eio Stdio Transport logging"
+module Log = (val Logs.src_log src : Logs.LOG)
 
 type stdin = Flow.source_ty Eio.Std.r
 type stdout = Flow.sink_ty Eio.Std.r
@@ -24,19 +27,19 @@ let create ~stdin ~stdout =
 let send t packet =
   if t.closed then failwith "Transport is closed"
   else (
-    Log.debug "Sending packet via stdio";
+    Log.debug (fun m -> m "Sending packet via stdio");
     Framing.write_packet t.stdout packet)
 
 let recv t =
   if t.closed then (
-    Log.debug "Transport is closed, returning None";
+    Log.debug (fun m -> m "Transport is closed, returning None");
     None)
   else (
-    Log.debug "Reading packet from stdio";
+    Log.debug (fun m -> m "Reading packet from stdio");
     let result = Framing.read_packet t.buf_reader in
     (match result with
-    | None -> Log.debug "Read returned None (EOF)"
-    | Some _ -> Log.debug "Successfully read packet");
+    | None -> Log.debug (fun m -> m "Read returned None (EOF)")
+    | Some _ -> Log.debug (fun m -> m "Successfully read packet"));
     result)
 
 let close t = t.closed <- true

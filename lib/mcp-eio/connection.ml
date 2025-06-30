@@ -1,6 +1,8 @@
 (** Connection management for MCP over various transports *)
 
-module Log = Logging
+(* Setup logging *)
+let src = Logs.Src.create "mcp.eio.connection" ~doc:"MCP Eio Connection logging"
+module Log = (val Logs.src_log src : Logs.LOG)
 
 type transport = {
   send : Jsonrpc.Packet.t -> unit;
@@ -27,41 +29,41 @@ let send t outgoing_msg =
 let recv t =
   match t.transport.recv () with
   | None ->
-      Log.debug "Transport returned None (EOF)";
+      Log.debug (fun m -> m "Transport returned None (EOF)");
       None
   | Some packet -> (
-      Log.debug "Raw packet received";
+      Log.debug (fun m -> m "Raw packet received");
       match Mcp.Protocol.parse_message packet with
       | Ok msg -> Some msg
       | Error err ->
           (* Log error and skip malformed message *)
-          Log.error "Failed to parse message: %s" err;
+          Log.err (fun m -> m "Failed to parse message: %s" err);
           None)
 
 let close t = t.transport.close ()
 
 let serve ~sw:_ t server =
-  Log.info "Starting MCP server";
+  Log.info (fun m -> m "Starting MCP server");
   let rec loop () =
-    Log.debug "Waiting for message...";
+    Log.debug (fun m -> m "Waiting for message...");
     match recv t with
     | None ->
-        Log.debug "End of file received, exiting server loop";
+        Log.debug (fun m -> m "End of file received, exiting server loop");
         () (* EOF, exit loop *)
     | Some msg ->
-        Log.debug "Processing message";
+        Log.debug (fun m -> m "Processing message");
         (match Mcp.Server.handle_message server msg with
         | Some response ->
-            Log.debug "Sending response";
+            Log.debug (fun m -> m "Sending response");
             send t response
-        | None -> Log.debug "No response needed");
+        | None -> Log.debug (fun m -> m "No response needed"));
         loop ()
   in
   try
     loop ();
-    Log.info "Server loop ended normally"
+    Log.info (fun m -> m "Server loop ended normally")
   with exn ->
-    Log.error "Server error: %s" (Printexc.to_string exn);
+    Log.err (fun m -> m "Server error: %s" (Printexc.to_string exn));
     close t
 
 let run_client ~sw:_ t client =

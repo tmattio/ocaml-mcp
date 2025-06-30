@@ -7,6 +7,9 @@
 type t
 (** Transport instance for socket communication. *)
 
+val create_from_socket : _ Eio.Net.stream_socket -> t
+(** [create_from_socket socket] creates a transport from an existing socket. *)
+
 val create_server :
   net:_ Eio.Net.t -> sw:Eio.Switch.t -> Eio.Net.Sockaddr.stream -> t
 (** [create_server ~net ~sw addr] creates server socket transport.

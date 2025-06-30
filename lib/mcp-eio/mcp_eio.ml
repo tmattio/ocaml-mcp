@@ -7,4 +7,3 @@ module Memory = Transport_memory
 module Http = Transport_http
 module Connection = Connection
 module Framing = Framing
-module Logging = Logging
