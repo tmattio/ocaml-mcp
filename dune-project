@@ -53,5 +53,6 @@
   jsonschema
   re
   cmdliner
+  merlin-lib
   (ppx_deriving_yojson
    (>= 3.9.0))))

@@ -1,0 +1,1 @@
+let () = Mylib.hello ()

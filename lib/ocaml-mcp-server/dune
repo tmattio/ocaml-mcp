@@ -1,3 +1,5 @@
+(include_subdirs unqualified)
+
 (library
  (public_name ocaml-mcp-server)
  (name ocaml_mcp_server)
@@ -12,6 +14,11 @@
   dune-rpc
   unix
   logs
-  logs.fmt)
+  logs.fmt
+  merlin-lib.kernel
+  merlin-lib.query_protocol
+  merlin-lib.query_commands
+  merlin-lib.analysis
+  compiler-libs.common)
  (preprocess
   (pps ppx_deriving_yojson)))

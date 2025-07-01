@@ -150,7 +150,10 @@ module Server = struct
   (* Helper function for tools with no arguments *)
   let tool_no_args t name ?title ?description ?output_schema ?annotations
       handler =
-    let typed_handler _ ctx =
+    let typed_handler json_opt ctx =
+      (* For unit type, we need to pass null, not empty object *)
+      let _ = json_opt in
+      (* ignore the input *)
       let result = handler () ctx in
       (* Validate output if schema provided *)
       match (result, output_schema) with
@@ -496,10 +499,19 @@ module Server = struct
         on_tools_call =
           (fun params ->
             match Hashtbl.find_opt t.tools params.name with
-            | None -> Error ("Unknown tool: " ^ params.name)
+            | None ->
+                Log.err (fun m -> m "Unknown tool: %s" params.name);
+                Error ("Unknown tool: " ^ params.name)
             | Some h ->
                 let ctx = make_context (String "tool-call") None in
-                h.handler params.arguments ctx);
+                let result = h.handler params.arguments ctx in
+                (match result with
+                | Ok _ ->
+                    Log.info (fun m ->
+                        m "Tool %s executed successfully" params.name)
+                | Error e ->
+                    Log.err (fun m -> m "Tool %s failed: %s" params.name e));
+                result);
         on_resources_list =
           (fun params ->
             let all_resources =

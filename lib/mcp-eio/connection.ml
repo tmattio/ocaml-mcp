@@ -29,11 +29,8 @@ let send t outgoing_msg =
 
 let recv t =
   match t.transport.recv () with
-  | None ->
-      Log.debug (fun m -> m "Transport returned None (EOF)");
-      None
+  | None -> None
   | Some packet -> (
-      Log.debug (fun m -> m "Raw packet received");
       match Mcp.Protocol.parse_message packet with
       | Ok msg -> Some msg
       | Error err ->
@@ -44,15 +41,25 @@ let recv t =
 let close t = t.transport.close ()
 
 let serve ~sw:_ t server =
-  Log.info (fun m -> m "Starting MCP server");
   let rec loop () =
-    Log.debug (fun m -> m "Waiting for message...");
     match recv t with
     | None ->
-        Log.debug (fun m -> m "End of file received, exiting server loop");
+        Log.info (fun m -> m "Client disconnected");
         () (* EOF, exit loop *)
     | Some msg ->
-        Log.debug (fun m -> m "Processing message");
+        (match msg with
+        | Mcp.Protocol.Request (id, req) ->
+            Log.info (fun m ->
+                m "Received request: %s (id: %s)"
+                  (Mcp.Request.method_name req)
+                  (match id with `String s -> s | `Int i -> string_of_int i))
+        | Mcp.Protocol.Notification notif ->
+            Log.info (fun m ->
+                m "Received notification: %s"
+                  (Mcp.Notification.method_name notif))
+        | Mcp.Protocol.Response (_, _) ->
+            Log.debug (fun m -> m "Received response (unexpected in server)")
+        | _ -> Log.debug (fun m -> m "Received batch message"));
         (match Mcp.Server.handle_message server msg with
         | Some response ->
             Log.debug (fun m -> m "Sending response");
@@ -62,7 +69,7 @@ let serve ~sw:_ t server =
   in
   try
     loop ();
-    Log.info (fun m -> m "Server loop ended normally")
+    Log.debug (fun m -> m "Server loop ended")
   with exn ->
     Log.err (fun m -> m "Server error: %s" (Printexc.to_string exn));
     close t

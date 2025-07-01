@@ -34,9 +34,7 @@ let accept_loop ~env ~sw ~config ~net addr =
           let connection =
             Mcp_eio.Connection.create (module Mcp_eio.Socket) transport
           in
-          handle_client ~sw ~env ~config connection;
-          Logs.info (fun m ->
-              m "Client disconnected: %a" Eio.Net.Sockaddr.pp client_addr)
+          handle_client ~sw ~env ~config connection
         with exn ->
           (* Log error but don't crash the server *)
           Logs.err (fun m ->

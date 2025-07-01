@@ -16,11 +16,12 @@ Create a simple dune project:
 
 First build the project:
 
-  $ dune build
+  $ dune build --root .
 
 Start dune build in watch mode to enable RPC:
 
-  $ dune build --watch > /dev/null 2>&1 &
+  $ dune build --watch --root . &
+  Success, waiting for filesystem changes...
   $ DUNE_PID=$!
   $ sleep 1
 
