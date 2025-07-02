@@ -1,41 +1,51 @@
 (** Dune build target tool *)
 
 open Mcp_sdk
+open Eio
 
 type args = { targets : string list } [@@deriving yojson]
 
 let name = "dune/build-target"
 let description = "Build specific files/libraries/tests"
 
-let handle _dune_rpc args _ctx =
-  let targets_str = String.concat " " args.targets in
+let handle _sw env _dune_rpc args _ctx =
   let output_lines = ref [] in
   let add_line line = output_lines := line :: !output_lines in
 
-  add_line (Printf.sprintf "Building targets: %s" targets_str);
+  add_line
+    (Printf.sprintf "Building targets: %s" (String.concat " " args.targets));
 
-  (* Execute dune build command with --no-lock to work alongside watch mode *)
-  let cmd = Printf.sprintf "dune build %s 2>&1" targets_str in
-  let ic = Unix.open_process_in cmd in
-  let rec read_output () =
-    try
-      let line = input_line ic in
-      add_line line;
-      read_output ()
-    with End_of_file -> ()
-  in
-  read_output ();
+  let process_mgr = Stdenv.process_mgr env in
 
-  match Unix.close_process_in ic with
-  | Unix.WEXITED 0 ->
-      Ok (Tool_result.text (String.concat "\n" (List.rev !output_lines)))
-  | Unix.WEXITED _code ->
-      Ok (Tool_result.error (String.concat "\n" (List.rev !output_lines)))
-  | _ ->
-      add_line "Build was interrupted";
-      Ok (Tool_result.error (String.concat "\n" (List.rev !output_lines)))
+  (* Run dune build using Eio.Process *)
+  try
+    let stdout_buf = Buffer.create 1024 in
+    let stderr_buf = Buffer.create 1024 in
 
-let register server ~dune_rpc =
+    Process.run process_mgr
+      ("dune" :: "build" :: args.targets)
+      ~stdout:(Flow.buffer_sink stdout_buf)
+      ~stderr:(Flow.buffer_sink stderr_buf);
+
+    (* Collect output *)
+    let stdout_lines = String.split_on_char '\n' (Buffer.contents stdout_buf) in
+    let stderr_lines = String.split_on_char '\n' (Buffer.contents stderr_buf) in
+
+    List.iter (fun line -> if line <> "" then add_line line) stdout_lines;
+    List.iter (fun line -> if line <> "" then add_line line) stderr_lines;
+
+    Ok (Tool_result.text (String.concat "\n" (List.rev !output_lines)))
+  with exn ->
+    (* Check if it's a process exit error *)
+    let error_msg =
+      match exn with
+      | Eio.Exn.Io (Eio.Process.E _, _) -> "Build failed"
+      | _ -> Printf.sprintf "Build failed: %s" (Printexc.to_string exn)
+    in
+    add_line error_msg;
+    Ok (Tool_result.error (String.concat "\n" (List.rev !output_lines)))
+
+let register server ~sw ~env ~dune_rpc =
   Server.tool server name ~description
     ~args:
       (module struct
@@ -61,4 +71,4 @@ let register server ~dune_rpc =
               ("required", `List [ `String "targets" ]);
             ]
       end)
-    (handle dune_rpc)
+    (handle sw env dune_rpc)

@@ -1,90 +1,16 @@
 (** OCaml REPL evaluation tool *)
 
 open Mcp_sdk
+open Eio
 
 type args = { code : string } [@@deriving yojson]
 
 let name = "ocaml/eval"
 let description = "Evaluate OCaml expressions in project context"
 
-(* Capture stdout/stderr during evaluation *)
-let capture_output f =
-  let old_stdout = Unix.dup Unix.stdout in
-  let old_stderr = Unix.dup Unix.stderr in
-  let r_out, w_out = Unix.pipe () in
-  let r_err, w_err = Unix.pipe () in
-  Unix.dup2 w_out Unix.stdout;
-  Unix.dup2 w_err Unix.stderr;
-  let result = 
-    try 
-      let res = f () in
-      Unix.close w_out;
-      Unix.close w_err;
-      let out_buf = Buffer.create 1024 in
-      let err_buf = Buffer.create 1024 in
-      let tmp = Bytes.create 1024 in
-      let rec read_all fd buf =
-        match Unix.read fd tmp 0 1024 with
-        | 0 -> ()
-        | n -> Buffer.add_subbytes buf tmp 0 n; read_all fd buf
-      in
-      read_all r_out out_buf;
-      read_all r_err err_buf;
-      Unix.close r_out;
-      Unix.close r_err;
-      Ok (res, Buffer.contents out_buf, Buffer.contents err_buf)
-    with e ->
-      Unix.close w_out;
-      Unix.close w_err;
-      Unix.close r_out;
-      Unix.close r_err;
-      Error e
-  in
-  Unix.dup2 old_stdout Unix.stdout;
-  Unix.dup2 old_stderr Unix.stderr;
-  Unix.close old_stdout;
-  Unix.close old_stderr;
-  result
-
-let run_toplevel_phrase code =
-  (* Ensure code ends with ;; for proper parsing *)
-  let code = 
-    let trimmed = String.trim code in
-    if String.length trimmed >= 2 && 
-       String.sub trimmed (String.length trimmed - 2) 2 = ";;" then
-      trimmed
-    else
-      trimmed ^ ";;" 
-  in
-  
-  let lexbuf = Lexing.from_string code in
-  try
-    let phrase = !Toploop.parse_toplevel_phrase lexbuf in
-    capture_output (fun () -> 
-      let fmt = Format.str_formatter in
-      let result = Toploop.execute_phrase true fmt phrase in
-      (result, Format.flush_str_formatter ())
-    )
-  with
-  | Syntaxerr.Error _ as e ->
-    Error e
-  | e ->
-    Error e
-
+(* We keep the mutex for thread safety as Toploop has global state *)
 let initialized = ref false
-
-let read_process_output cmd =
-  let ic = Unix.open_process_in cmd in
-  let rec read_lines acc =
-    try
-      let line = input_line ic in
-      read_lines (line :: acc)
-    with End_of_file ->
-      List.rev acc
-  in
-  let lines = read_lines [] in
-  let _ = Unix.close_process_in ic in
-  String.concat "\n" lines
+let toplevel_mutex = Mutex.create ()
 
 let execute_directive directive =
   let lexbuf = Lexing.from_string directive in
@@ -93,72 +19,133 @@ let execute_directive directive =
     ignore (Toploop.execute_phrase false Format.std_formatter phrase)
   with _ -> ()
 
-let initialize_toplevel project_root =
-  if not !initialized then begin
+let initialize_toplevel env project_root =
+  if not !initialized then (
     initialized := true;
     Toploop.initialize_toplevel_env ();
-    
-    (* Get directives from dune top *)
-    let directives_cmd = 
-      Printf.sprintf "cd %s && dune top . 2>/dev/null" 
-        (Filename.quote project_root)
-    in
-    
-    try
-      let output = read_process_output directives_cmd in
-      (* Parse and execute each directive line *)
-      let lines = String.split_on_char '\n' output in
-      List.iter (fun line ->
-        let line = String.trim line in
-        if String.length line > 0 && line.[0] = '#' then
-          execute_directive (line ^ ";;")
-      ) lines
-    with _ ->
-      (* Failed to get directives, continue anyway *)
-      ()
-  end
 
-let handle project_root args _ctx =
+    (* Only try dune top if we're in a dune project *)
+    let dune_project = Filename.concat project_root "dune-project" in
+    let fs = Stdenv.fs env in
+
+    (* Check if dune-project exists using Eio *)
+    match Path.kind ~follow:true Path.(fs / dune_project) with
+    | `Regular_file | `Directory -> (
+        (* Get directives from dune top *)
+        try
+          let process_mgr = Stdenv.process_mgr env in
+          let output_buf = Buffer.create 1024 in
+
+          (* Run dune top with timeout using Fiber.first *)
+          let output_result =
+            Fiber.first
+              (fun () ->
+                (* Timeout fiber *)
+                let clock = Stdenv.mono_clock env in
+                Time.Mono.sleep clock 2.0;
+                Error `Timeout)
+              (fun () ->
+                (* Process fiber *)
+                try
+                  Process.run process_mgr
+                    [ "dune"; "-C"; project_root; "top"; "." ]
+                    ~stdout:(Flow.buffer_sink output_buf);
+                  Ok (Buffer.contents output_buf)
+                with exn -> Error (`Process_failed exn))
+          in
+
+          match output_result with
+          | Ok output ->
+              (* Parse and execute each directive line *)
+              let lines = String.split_on_char '\n' output in
+              List.iter
+                (fun line ->
+                  let line = String.trim line in
+                  if String.length line > 0 && line.[0] = '#' then
+                    execute_directive (line ^ ";;"))
+                lines
+          | Error _ ->
+              (* Failed to get directives, continue anyway *)
+              ()
+        with _ ->
+          (* Any other failure, continue anyway *)
+          ())
+    | _ ->
+        (* dune-project doesn't exist or isn't accessible, skip dune top *)
+        ())
+
+let run_toplevel_phrase code =
+  (* Ensure code ends with ;; for proper parsing *)
+  let code =
+    let trimmed = String.trim code in
+    if
+      String.length trimmed >= 2
+      && String.sub trimmed (String.length trimmed - 2) 2 = ";;"
+    then trimmed
+    else trimmed ^ ";;"
+  in
+
+  let lexbuf = Lexing.from_string code in
   try
-    initialize_toplevel project_root;
-    
-    (* Evaluate the code *)
-    match run_toplevel_phrase args.code with
-    | Ok ((success, formatted_output), stdout, stderr) ->
-      let output = Buffer.create 256 in
-      
-      (* Add the formatted output from the toplevel *)
-      if String.length formatted_output > 0 then
-        Buffer.add_string output formatted_output;
-        
-      (* Add any additional stdout *)
-      if String.length stdout > 0 then begin
-        if Buffer.length output > 0 then Buffer.add_char output '\n';
-        Buffer.add_string output stdout;
-      end;
-      
-      (* Add any stderr *)
-      if String.length stderr > 0 then begin
-        if Buffer.length output > 0 then Buffer.add_char output '\n';
-        Buffer.add_string output stderr;
-      end;
-      
-      if success then
-        Ok (Tool_result.text (Buffer.contents output))
-      else
-        Ok (Tool_result.error (Buffer.contents output))
-    | Error exn ->
-      let msg = match exn with
-      | Syntaxerr.Error _ ->
-        "Syntax error: " ^ Printexc.to_string exn
-      | _ ->
-        "Error: " ^ Printexc.to_string exn
-      in
-      Ok (Tool_result.error msg)
-  with exn ->
-    Ok (Tool_result.error ("Unexpected error: " ^ Printexc.to_string exn))
+    let phrase = !Toploop.parse_toplevel_phrase lexbuf in
 
-let register server ~project_root =
+    (* Use Format.str_formatter to capture output *)
+    let result =
+      try
+        let success = Toploop.execute_phrase true Format.str_formatter phrase in
+        let output = Format.flush_str_formatter () in
+        Ok (success, output, "")
+      with exn -> Error exn
+    in
+
+    result
+  with
+  | Syntaxerr.Error _ as e -> Error e
+  | e -> Error e
+
+let handle env project_root args _ctx =
+  Mutex.lock toplevel_mutex;
+  try
+    let result =
+      try
+        initialize_toplevel env project_root;
+
+        (* Evaluate the code *)
+        match run_toplevel_phrase args.code with
+        | Ok (success, stdout, stderr) ->
+            let output = Buffer.create 256 in
+
+            (* Add stdout output *)
+            if String.length stdout > 0 then Buffer.add_string output stdout;
+
+            (* Add stderr output *)
+            if String.length stderr > 0 then (
+              if
+                Buffer.length output > 0
+                && not (Buffer.nth output (Buffer.length output - 1) = '\n')
+              then Buffer.add_char output '\n';
+              Buffer.add_string output stderr);
+
+            if success then Ok (Tool_result.text (Buffer.contents output))
+            else Ok (Tool_result.error (Buffer.contents output))
+        | Error exn ->
+            let msg =
+              match exn with
+              | Syntaxerr.Error _ -> "Syntax error: " ^ Printexc.to_string exn
+              | _ -> "Error: " ^ Printexc.to_string exn
+            in
+            Ok (Tool_result.error msg)
+      with exn ->
+        Ok (Tool_result.error ("Unexpected error: " ^ Printexc.to_string exn))
+    in
+    Mutex.unlock toplevel_mutex;
+    result
+  with exn ->
+    (* Ensure mutex is unlocked even if an exception occurs *)
+    Mutex.unlock toplevel_mutex;
+    raise exn
+
+let register server ~sw:_ ~env ~project_root =
   Server.tool server name ~description
     ~args:
       (module struct
@@ -176,4 +163,4 @@ let register server ~project_root =
               ("required", `List [ `String "code" ]);
             ]
       end)
-    (handle project_root)
+    (handle env project_root)

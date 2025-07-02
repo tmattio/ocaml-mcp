@@ -7,7 +7,7 @@ type args = { module_path : string list } [@@deriving yojson]
 let name = "ocaml/module-signature"
 let description = "Get the signature of an OCaml module from build artifacts"
 
-let handle project_root args _ctx =
+let handle ~sw:_ env project_root args _ctx =
   let src = Logs.Src.create "module-signature" ~doc:"Module signature tool" in
   let module Log = (val Logs.src_log src : Logs.LOG) in
   Log.debug (fun m ->
@@ -15,13 +15,13 @@ let handle project_root args _ctx =
         (String.concat "." args.module_path));
 
   match
-    Ocaml_analysis.get_module_signature ~project_root
+    Ocaml_analysis.get_module_signature ~env ~project_root
       ~module_path:args.module_path
   with
   | Ok signature_text -> Ok (Tool_result.text signature_text)
   | Error err -> Ok (Tool_result.error err)
 
-let register server ~project_root =
+let register server ~sw ~env ~project_root =
   Server.tool server name ~description
     ~args:
       (module struct
@@ -47,4 +47,4 @@ let register server ~project_root =
               ("required", `List [ `String "module_path" ]);
             ]
       end)
-    (handle project_root)
+    (handle ~sw env project_root)

@@ -129,7 +129,6 @@ type progress =
 type session = {
   flow : Eio.Flow.two_way_ty Eio.Resource.t;
   buf_read : Buf_read.t;
-  buf_write : Buf_write.t;
   id : Drpc.Id.t; [@warning "-69"]
   request_id : Request_id.t;
 }
@@ -223,7 +222,7 @@ let read_csexp buf_read =
   | exn -> Error (Printf.sprintf "Parse error: %s" (Printexc.to_string exn))
 
 (* Initialize RPC session *)
-let initialize_session ~flow ~buf_read ~buf_write =
+let initialize_session ~flow ~buf_read =
   let id = Drpc.Id.make (Csexp.Atom "ocaml-mcp") in
   let request_id = Request_id.create () in
 
@@ -238,16 +237,14 @@ let initialize_session ~flow ~buf_read ~buf_write =
         Csexp.List [ Csexp.Atom "version"; Csexp.Atom "1.0" ];
       ]
   in
-  write_csexp buf_write csexp;
-  Buf_write.flush buf_write;
-  (* Write the buffer contents to the flow *)
-  let s = Csexp.to_string csexp in
-  Eio.Flow.copy_string s flow;
+  Buf_write.with_flow flow (fun w ->
+      write_csexp w csexp;
+      Buf_write.flush w);
 
   (* Read response *)
   match read_csexp buf_read with
   | Ok (Csexp.List [ Csexp.Atom "response"; _; Csexp.Atom "ok"; _ ]) ->
-      Ok { flow; buf_read; buf_write; id; request_id }
+      Ok { flow; buf_read; id; request_id }
   | Ok (Csexp.List [ Csexp.Atom "response"; _; Csexp.Atom "error"; msg ]) ->
       let error_msg =
         match msg with
@@ -270,8 +267,7 @@ let connect_to_instance ~sw ~net instance =
         let socket = Eio.Net.connect ~sw net addr in
         let flow = (socket :> Eio.Flow.two_way_ty Eio.Resource.t) in
         let buf_read = Buf_read.of_flow ~max_size:Int.max_int flow in
-        let buf_write = Buf_write.create 4096 in
-        match initialize_session ~flow ~buf_read ~buf_write with
+        match initialize_session ~flow ~buf_read with
         | Ok session -> Ok session
         | Error msg ->
             Eio.Flow.close socket;
@@ -295,10 +291,9 @@ let subscribe_to_events session _t =
         Csexp.Atom "diagnostics";
       ]
   in
-  write_csexp session.buf_write diag_msg;
-  Buf_write.flush session.buf_write;
-  let s = Csexp.to_string diag_msg in
-  Eio.Flow.copy_string s session.flow;
+  Buf_write.with_flow session.flow (fun w ->
+      write_csexp w diag_msg;
+      Buf_write.flush w);
 
   (* Subscribe to progress *)
   let progress_req_id = Request_id.next session.request_id in
@@ -311,10 +306,9 @@ let subscribe_to_events session _t =
         Csexp.Atom "progress";
       ]
   in
-  write_csexp session.buf_write progress_msg;
-  Buf_write.flush session.buf_write;
-  let s = Csexp.to_string progress_msg in
-  Eio.Flow.copy_string s session.flow
+  Buf_write.with_flow session.flow (fun w ->
+      write_csexp w progress_msg;
+      Buf_write.flush w)
 
 (* Parse diagnostic from Csexp - based on Dune RPC protocol *)
 let parse_diagnostic csexp =

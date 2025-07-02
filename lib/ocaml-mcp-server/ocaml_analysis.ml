@@ -1,5 +1,7 @@
 (** OCaml code analysis - module signatures and build artifacts *)
 
+open Eio
+
 (* Setup logging *)
 let src = Logs.Src.create "ocaml-analysis" ~doc:"OCaml analysis logging"
 
@@ -33,8 +35,9 @@ let read_cmt_file ~cmt_path =
       Error
         (Printf.sprintf "Failed to read CMT file: %s" (Printexc.to_string exn))
 
-(** Find .cmi or .cmt file for a module *)
-let find_build_artifact ~project_root ~module_path ~extension =
+(** Find .cmi or .cmt file for a module using Eio *)
+let find_build_artifact ~env ~project_root ~module_path ~extension =
+  let fs = Stdenv.fs env in
   let module_name =
     match module_path with [] -> None | path -> Some (String.concat "." path)
   in
@@ -54,40 +57,45 @@ let find_build_artifact ~project_root ~module_path ~extension =
         ]
       in
 
-      (* Recursively search for the file *)
+      (* Recursively search for the file using Eio *)
       let rec search_in_dir dir =
-        if Sys.file_exists dir && Sys.is_directory dir then
-          let entries = Sys.readdir dir in
-          Array.fold_left
-            (fun acc entry ->
-              match acc with
-              | Some _ -> acc
-              | None ->
+        let dir_path = Path.(fs / dir) in
+        match Path.kind ~follow:true dir_path with
+        | `Directory -> (
+            try
+              let entries = Path.read_dir dir_path in
+              List.find_map
+                (fun entry ->
                   let path = Filename.concat dir entry in
-                  if
-                    entry = filename && Sys.file_exists path
-                    && not (Sys.is_directory path)
-                  then Some path
-                  else if Sys.is_directory path then search_in_dir path
-                  else None)
-            None entries
-        else None
+                  if entry = filename then
+                    match Path.kind ~follow:true Path.(fs / path) with
+                    | `Regular_file -> Some path
+                    | _ -> None
+                  else
+                    match Path.kind ~follow:true Path.(fs / path) with
+                    | `Directory -> search_in_dir path
+                    | _ -> None)
+                entries
+            with _ -> None)
+        | _ -> None
       in
 
       (* Try each search path *)
       List.find_map search_in_dir search_paths
 
 (** Get module signature from build artifacts *)
-let get_module_signature ~project_root ~module_path =
+let get_module_signature ~env ~project_root ~module_path =
   (* First try .cmi file *)
-  match find_build_artifact ~project_root ~module_path ~extension:".cmi" with
+  match
+    find_build_artifact ~env ~project_root ~module_path ~extension:".cmi"
+  with
   | Some cmi_path ->
       Log.debug (fun m -> m "Found .cmi file at: %s" cmi_path);
       read_cmi_signature ~cmi_path
   | None -> (
       (* Try .cmt file as fallback *)
       match
-        find_build_artifact ~project_root ~module_path ~extension:".cmt"
+        find_build_artifact ~env ~project_root ~module_path ~extension:".cmt"
       with
       | Some cmt_path -> (
           Log.debug (fun m -> m "Found .cmt file at: %s" cmt_path);

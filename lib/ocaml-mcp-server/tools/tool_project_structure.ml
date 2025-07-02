@@ -1,6 +1,7 @@
 (** Project structure tool *)
 
 open Mcp_sdk
+open Eio
 
 (* Tool argument types *)
 type args = unit [@@deriving yojson]
@@ -294,66 +295,49 @@ let format_component ~project_root:_ comp =
   in
   String.concat "\n" lines
 
-let handle project_root _args _ctx =
+let handle _sw env project_root _args _ctx =
   Log.info (fun m ->
       m "project-structure tool called with project_root: %s" project_root);
-  let open Unix in
-  let old_cwd = getcwd () in
+  Log.debug (fun m -> m "Running dune describe workspace");
+
+  let process_mgr = Stdenv.process_mgr env in
+
+  (* Run dune describe using Eio.Process *)
   try
-    chdir project_root;
-    Log.debug (fun m -> m "Running dune describe workspace");
-    let ch =
-      open_process_in "dune describe workspace --format=csexp 2>/dev/null"
-    in
-    let output =
-      let rec read_all acc =
-        try
-          let line = input_line ch in
-          read_all (acc ^ line)
-          (* Don't add newlines - csexp is one line *)
-        with End_of_file -> acc
-      in
-      read_all ""
-    in
-    let status = close_process_in ch in
-    chdir old_cwd;
-    match status with
-    | WEXITED 0 -> (
-        match parse_dune_describe_output output with
-        | Ok (root, components) ->
-            Log.debug (fun m ->
-                m "Parsed %d components" (List.length components));
-            let header =
-              Printf.sprintf "Project Root: %s\nBuild Context: default\n" root
-            in
-            let formatted_components =
-              List.map (format_component ~project_root) components
-              |> String.concat "\n\n"
-            in
-            Ok (Tool_result.text (header ^ "\n" ^ formatted_components))
-        | Error msg ->
-            Log.err (fun m -> m "Failed to parse dune describe output: %s" msg);
-            Error msg)
-    | WEXITED code ->
-        let msg =
-          Printf.sprintf "dune describe failed with exit code %d" code
+    let output_buf = Buffer.create 1024 in
+    Process.run process_mgr
+      [ "dune"; "-C"; project_root; "describe"; "workspace"; "--format=csexp" ]
+      ~stdout:(Flow.buffer_sink output_buf);
+
+    let output = Buffer.contents output_buf in
+
+    match parse_dune_describe_output output with
+    | Ok (root, components) ->
+        Log.debug (fun m -> m "Parsed %d components" (List.length components));
+        let header =
+          Printf.sprintf "Project Root: %s\nBuild Context: default\n" root
         in
-        Log.err (fun m -> m "%s" msg);
+        let formatted_components =
+          List.map (format_component ~project_root) components
+          |> String.concat "\n\n"
+        in
+        Ok (Tool_result.text (header ^ "\n" ^ formatted_components))
+    | Error msg ->
+        Log.err (fun m -> m "Failed to parse dune describe output: %s" msg);
         Error msg
-    | _ ->
-        let msg = "dune describe was terminated" in
-        Log.err (fun m -> m "%s" msg);
-        Error msg
-  with e ->
-    chdir old_cwd;
+  with exn ->
     let msg =
-      Printf.sprintf "Error running dune describe: %s" (Printexc.to_string e)
+      match exn with
+      | Eio.Exn.Io (Eio.Process.E _, _) -> "dune describe failed"
+      | _ ->
+          Printf.sprintf "Error running dune describe: %s"
+            (Printexc.to_string exn)
     in
     Log.err (fun m -> m "%s" msg);
     Error msg
 
-let register server ~project_root =
+let register server ~sw ~env ~project_root =
   Log.debug (fun m ->
       m "Registering project-structure tool with project_root: %s" project_root);
   Server.tool server name ~description (fun () _ctx ->
-      handle project_root () _ctx)
+      handle sw env project_root () _ctx)

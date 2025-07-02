@@ -12,24 +12,36 @@ type config = { project_root : string option; enable_dune : bool }
 
 let default_config = { project_root = None; enable_dune = true }
 
-let find_project_root () =
+let find_project_root env =
   (* Look for dune-project or .git in parent directories *)
+  let fs = Stdenv.fs env in
   let rec find_root dir =
-    if
-      Sys.file_exists (Filename.concat dir "dune-project")
-      || Sys.file_exists (Filename.concat dir ".git")
-    then Some dir
-    else
-      let parent = Filename.dirname dir in
-      if parent = dir then None else find_root parent
+    let dune_project_path = Path.(fs / dir / "dune-project") in
+    let git_path = Path.(fs / dir / ".git") in
+    match
+      ( Path.kind ~follow:false dune_project_path,
+        Path.kind ~follow:false git_path )
+    with
+    | (`Regular_file | `Directory), _ | _, `Directory -> Some dir
+    | _ ->
+        let parent = Filename.dirname dir in
+        if parent = dir then None else find_root parent
   in
-  find_root (Sys.getcwd ())
+  let cwd = Stdenv.cwd env in
+  match Path.native cwd with Some cwd_str -> find_root cwd_str | None -> None
 
 let create_server ~sw ~env ~config =
   let project_root =
     match config.project_root with
     | Some root -> root
-    | None -> Option.value (find_project_root ()) ~default:(Sys.getcwd ())
+    | None -> (
+        match find_project_root env with
+        | Some root -> root
+        | None -> (
+            (* Fall back to current working directory *)
+            match Path.native (Stdenv.cwd env) with
+            | Some cwd -> cwd
+            | None -> "."))
   in
 
   (* Initialize merlin client *)
@@ -74,21 +86,23 @@ let create_server ~sw ~env ~config =
   (* Register tools *)
   (* Dune tools *)
   Tool_build_status.register server ~dune_rpc;
-  Tool_build_target.register server ~dune_rpc;
+  Tool_build_target.register server ~sw ~env ~dune_rpc;
   Tool_run_tests.register server ~dune_rpc;
 
   (* OCaml analysis tools *)
-  Tool_module_signature.register server ~project_root;
-  Tool_find_definition.register server ~merlin_client;
-  Tool_find_references.register server ~merlin_client;
-  Tool_type_at_pos.register server ~merlin_client;
-  Tool_project_structure.register server ~project_root;
-  Tool_eval.register server ~project_root;
+  Tool_module_signature.register server ~sw ~env ~project_root;
+  Tool_find_definition.register server ~sw ~env ~merlin_client;
+  Tool_find_references.register server ~sw ~env ~merlin_client;
+  Tool_type_at_pos.register server ~sw ~env ~merlin_client;
+  Tool_project_structure.register server ~sw ~env ~project_root;
+  Tool_eval.register server ~sw ~env ~project_root;
 
   (* File system tools with OCaml superpowers *)
-  Tool_fs_read.register server ~merlin_client;
-  Tool_fs_write.register server ~merlin_client ~ocamlformat_client;
-  Tool_fs_edit.register server ~merlin_client ~ocamlformat_client;
+  Tool_fs_read.register server ~sw ~env ~merlin_client ~project_root;
+  Tool_fs_write.register server ~sw ~env ~merlin_client ~ocamlformat_client
+    ~project_root;
+  Tool_fs_edit.register server ~sw ~env ~merlin_client ~ocamlformat_client
+    ~project_root;
 
   server
 
