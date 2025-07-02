@@ -35,6 +35,9 @@ let create_server ~sw ~env ~config =
   (* Initialize merlin client *)
   let merlin_client = Merlin_client.create ~project_root in
 
+  (* Initialize ocamlformat client *)
+  let ocamlformat_client = Ocamlformat_client.create () in
+
   (* Initialize dune RPC if enabled *)
   let dune_rpc =
     if config.enable_dune && Sys.getenv_opt "OCAML_MCP_NO_DUNE" = None then (
@@ -81,6 +84,11 @@ let create_server ~sw ~env ~config =
   Tool_type_at_pos.register server ~merlin_client;
   Tool_project_structure.register server ~project_root;
   Tool_eval.register server ~project_root;
+
+  (* File system tools with OCaml superpowers *)
+  Tool_fs_read.register server ~merlin_client;
+  Tool_fs_write.register server ~merlin_client ~ocamlformat_client;
+  Tool_fs_edit.register server ~merlin_client ~ocamlformat_client;
 
   server
 

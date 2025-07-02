@@ -54,5 +54,6 @@
   re
   cmdliner
   merlin-lib
+  ocamlformat-lib
   (ppx_deriving_yojson
    (>= 3.9.0))))

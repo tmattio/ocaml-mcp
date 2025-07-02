@@ -3,6 +3,7 @@
 (library
  (public_name ocaml-mcp-server)
  (name ocaml_mcp_server)
+ (flags (:standard -linkall))
  (libraries
   mcp
   mcp-eio
@@ -19,6 +20,8 @@
   merlin-lib.query_protocol
   merlin-lib.query_commands
   merlin-lib.analysis
-  compiler-libs.common)
+  compiler-libs.common
+  compiler-libs.toplevel
+  ocamlformat-lib)
  (preprocess
   (pps ppx_deriving_yojson)))
