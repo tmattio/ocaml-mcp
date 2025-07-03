@@ -47,8 +47,8 @@ let initialize_toplevel env project_root =
               (fun () ->
                 (* Process fiber *)
                 try
-                  Process.run process_mgr
-                    [ "dune"; "-C"; project_root; "top"; "." ]
+                  let cwd = Eio.Path.(fs / project_root) in
+                  Process.run process_mgr [ "dune"; "top"; "." ] ~cwd
                     ~stdout:(Flow.buffer_sink output_buf);
                   Ok (Buffer.contents output_buf)
                 with exn -> Error (`Process_failed exn))
@@ -100,7 +100,13 @@ let run_toplevel_phrase code =
 
     result
   with
-  | Syntaxerr.Error _ as e -> Error e
+  | Syntaxerr.Error error ->
+      (* Format syntax error with location information *)
+      let buf = Buffer.create 256 in
+      let fmt = Format.formatter_of_buffer buf in
+      Location.report_exception fmt (Syntaxerr.Error error);
+      Format.pp_print_flush fmt ();
+      Error (Failure (Buffer.contents buf))
   | e -> Error e
 
 let handle env project_root args _ctx =
@@ -131,7 +137,7 @@ let handle env project_root args _ctx =
         | Error exn ->
             let msg =
               match exn with
-              | Syntaxerr.Error _ -> "Syntax error: " ^ Printexc.to_string exn
+              | Failure msg -> msg (* Already formatted error message *)
               | _ -> "Error: " ^ Printexc.to_string exn
             in
             Ok (Tool_result.error msg)

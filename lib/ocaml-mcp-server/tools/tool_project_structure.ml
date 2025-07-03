@@ -301,12 +301,15 @@ let handle _sw env project_root _args _ctx =
   Log.debug (fun m -> m "Running dune describe workspace");
 
   let process_mgr = Stdenv.process_mgr env in
+  let fs = Stdenv.fs env in
 
   (* Run dune describe using Eio.Process *)
   try
     let output_buf = Buffer.create 1024 in
+    let cwd = Eio.Path.(fs / project_root) in
     Process.run process_mgr
-      [ "dune"; "-C"; project_root; "describe"; "workspace"; "--format=csexp" ]
+      [ "dune"; "describe"; "workspace"; "--format=csexp" ]
+      ~cwd
       ~stdout:(Flow.buffer_sink output_buf);
 
     let output = Buffer.contents output_buf in

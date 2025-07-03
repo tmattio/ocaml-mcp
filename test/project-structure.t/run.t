@@ -1,11 +1,5 @@
 Test project-structure tool
 
-Kill any existing server using test.sock:
-  $ pkill -f "ocaml-mcp-server.*test.sock" 2>/dev/null || true
-
-Build the test project:
-  $ cd test_project && dune build && cd ..
-
 Start the MCP server for the test project:
   $ ocaml-mcp-server --pipe test.sock --no-dune --root "$PWD/test_project" -vv &
   ocaml-mcp-server: [INFO] Listening on unix:test.sock

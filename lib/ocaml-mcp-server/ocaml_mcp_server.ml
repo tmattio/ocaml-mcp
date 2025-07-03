@@ -86,7 +86,7 @@ let create_server ~sw ~env ~config =
   (* Register tools *)
   (* Dune tools *)
   Tool_build_status.register server ~dune_rpc;
-  Tool_build_target.register server ~sw ~env ~dune_rpc;
+  Tool_build_target.register server ~sw ~env ~project_root ~dune_rpc;
   Tool_run_tests.register server ~dune_rpc;
 
   (* OCaml analysis tools *)

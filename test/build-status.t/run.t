@@ -14,20 +14,26 @@ Create a simple dune project:
   > let () = print_endline "Hello from test project"
   > EOF
 
-First build the project:
-
-  $ dune build --root .
-
-Start dune build in watch mode to enable RPC:
+Start dune RPC and MCP server:
 
   $ dune build --watch --root . &
   Success, waiting for filesystem changes...
   $ DUNE_PID=$!
-  $ sleep 1
-
-Start MCP server and test build status:
-
-  $ ocaml-mcp-server --pipe test.sock &
+  $ ocaml-mcp-server --pipe test.sock -vv &
+  ocaml-mcp-server: [INFO] Listening on unix:test.sock
+  ocaml-mcp-server: [INFO] Server ready, waiting for connections...
+  ocaml-mcp-server: [INFO] Accepted connection from unix:
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
+  ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
+  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
+  ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
+  ocaml-mcp-server: [DEBUG] Sending response
+  ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
+  ocaml-mcp-server: [INFO] Tool dune/build-status executed successfully
+  ocaml-mcp-server: [DEBUG] Sending response
+  ocaml-mcp-server: [INFO] Client disconnected
+  ocaml-mcp-server: [DEBUG] Server loop ended
   $ SERVER_PID=$!
   $ sleep 1
 
@@ -37,5 +43,5 @@ Start MCP server and test build status:
 Clean up:
 
   $ kill $SERVER_PID 2>/dev/null
-  $ kill $DUNE_PID 2>/dev/null
+  $ kill -9 $DUNE_PID 2>/dev/null
   $ rm -f dune-project dune main.ml
