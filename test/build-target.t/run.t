@@ -22,6 +22,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
   ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
@@ -34,6 +35,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
   ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
@@ -46,6 +48,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
   ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
@@ -58,6 +61,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
   ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
@@ -70,6 +74,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
   ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
@@ -82,6 +87,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
   ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)

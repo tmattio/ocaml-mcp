@@ -8,9 +8,20 @@ let src = Logs.Src.create "ocaml-mcp-server" ~doc:"OCaml MCP Server logging"
 
 module Log = (val Logs.src_log src : Logs.LOG)
 
-type config = { project_root : string option; enable_dune : bool }
+type config = {
+  project_root : string option;
+  enable_dune : bool;
+  enable_mcp_logging : bool;
+  mcp_log_level : Mcp.Types.LogLevel.t option;
+}
 
-let default_config = { project_root = None; enable_dune = true }
+let default_config =
+  {
+    project_root = None;
+    enable_dune = true;
+    enable_mcp_logging = true;
+    mcp_log_level = None;
+  }
 
 let find_project_root env =
   (* Look for dune-project or .git in parent directories *)
@@ -66,6 +77,13 @@ let create_server ~sw ~env ~config =
   in
 
   (* Create SDK server with pagination support *)
+  let mcp_logging_config =
+    Server.
+      {
+        enabled = config.enable_mcp_logging;
+        initial_level = config.mcp_log_level;
+      }
+  in
   let server =
     Server.create
       ~server_info:{ name = "ocaml-mcp-server"; version = "0.1.0" }
@@ -73,6 +91,7 @@ let create_server ~sw ~env ~config =
         {
           Mcp.Types.Capabilities.experimental = None;
           logging = None;
+          (* Will be set by SDK based on mcp_logging_config *)
           completions = None;
           prompts = None;
           resources = None;
@@ -80,7 +99,7 @@ let create_server ~sw ~env ~config =
         }
       ~pagination_config:{ page_size = 10 }
         (* Demonstrate pagination with 10 items per page *)
-      ()
+      ~mcp_logging_config ()
   in
 
   (* Register tools *)
@@ -110,6 +129,10 @@ let run ~sw ~env ~connection ~config =
   Log.info (fun m -> m "Starting OCaml MCP Server");
   let server = create_server ~sw ~env ~config in
   let mcp_server = Server.to_mcp_server server in
+
+  (* Set up MCP logging using SDK functionality *)
+  Server.setup_mcp_logging server mcp_server;
+
   Mcp_eio.Connection.serve ~sw connection mcp_server
 
 let run_stdio ~env ~config =

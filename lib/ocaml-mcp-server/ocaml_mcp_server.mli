@@ -9,6 +9,8 @@ type config = {
   project_root : string option;
       (** Project root directory. Auto-detected if None. *)
   enable_dune : bool;  (** Enable Dune RPC for build status and diagnostics. *)
+  enable_mcp_logging : bool;  (** Enable MCP protocol logging. *)
+  mcp_log_level : Mcp.Types.LogLevel.t option;  (** Initial MCP log level. *)
 }
 
 val default_config : config

@@ -8,6 +8,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
   ocaml-mcp-server: [DEBUG] Dune RPC disabled
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
@@ -16,6 +17,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
   ocaml-mcp-server: [DEBUG] Dune RPC disabled
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/list (id: 1)
@@ -26,6 +28,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
   ocaml-mcp-server: [DEBUG] Dune RPC disabled
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
@@ -38,6 +41,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
   ocaml-mcp-server: [DEBUG] Dune RPC disabled
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
@@ -49,6 +53,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
   ocaml-mcp-server: [DEBUG] Dune RPC disabled
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
@@ -61,6 +66,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
   ocaml-mcp-server: [DEBUG] Dune RPC disabled
   ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
+  ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
@@ -78,6 +84,7 @@ Test server info:
   
   Capabilities:
   - Tools
+  - Logging
 
 List available tools:
   $ mcp-client --pipe test.sock list tools

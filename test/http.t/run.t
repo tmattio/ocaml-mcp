@@ -11,6 +11,7 @@ Test server info:
   
   Capabilities:
   - Tools
+  - Logging
 
 List tools:
   $ mcp-client --socket 8080 list tools

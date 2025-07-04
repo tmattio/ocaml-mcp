@@ -3,6 +3,21 @@
 open Mcp.Types
 open Mcp.Protocol
 
+(** MCP Logging support *)
+module Logging : sig
+  val map_mcp_to_logs_level : LogLevel.t -> Logs.level option
+  (** [map_mcp_to_logs_level level] converts an MCP LogLevel to an OCaml Logs
+      level *)
+
+  val add_mcp_notifier :
+    send_notification:(Mcp.Notification.t -> unit) ->
+    Logs.reporter ->
+    Logs.reporter
+  (** [add_mcp_notifier ~send_notification reporter] combines the given reporter
+      with an MCP notifier that sends log messages as MCP notifications. The
+      existing reporter continues to work normally. *)
+end
+
 (** The context passed to every server-side request handler. It provides access
     to request-specific information and actions. *)
 module Context : sig
@@ -65,18 +80,29 @@ module Server : sig
   type pagination_config = { page_size : int }
   (** Configuration for pagination support *)
 
+  type mcp_logging_config = {
+    enabled : bool;
+    initial_level : LogLevel.t option;
+  }
+  (** Configuration for MCP protocol logging *)
+
   val create :
     server_info:ServerInfo.t ->
     ?capabilities:Capabilities.server ->
     ?pagination_config:pagination_config ->
+    ?mcp_logging_config:mcp_logging_config ->
     unit ->
     t
-  (** [create ~server_info ?capabilities ()] creates a new server builder.
+  (** [create ~server_info ?capabilities ?mcp_logging_config ()] creates a new
+      server builder.
       @param server_info The name and version of your server implementation.
       @param capabilities
         (optional) The capabilities your server supports. Capabilities for
         tools, resources, and prompts are automatically added when you register
-        them. *)
+        them.
+      @param mcp_logging_config
+        (optional) Configuration for MCP protocol logging. Defaults to enabled
+        with no initial level. *)
 
   (** A first-class module representing a type that can be converted to and from
       Yojson. Typically derived using `ppx_deriving_yojson`. *)
@@ -193,6 +219,14 @@ module Server : sig
   (** [to_mcp_server t] constructs the final low-level [Mcp.Server.t] instance.
       This is the bridge to the transport layer. The resulting server can be run
       using a connection manager like [Mcp_eio.Connection.serve]. *)
+
+  val setup_mcp_logging : t -> Mcp.Server.t -> unit
+  (** [setup_mcp_logging t mcp_server] sets up MCP protocol logging if enabled.
+      This should be called after [to_mcp_server] but before serving the
+      connection. It will:
+      - Set the initial log level if specified in the configuration
+      - Install a combined reporter that logs to both console and MCP client
+      - Send log messages as MCP notifications *)
 end
 
 (** High-level MCP Client with helpers for creating requests. *)

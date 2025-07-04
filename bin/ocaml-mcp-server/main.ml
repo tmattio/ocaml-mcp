@@ -86,6 +86,41 @@ let no_dune =
   let doc = "Disable Dune RPC integration." in
   Arg.(value & flag & info [ "no-dune" ] ~doc)
 
+let mcp_logging =
+  let doc = "Enable MCP protocol logging (sends logs to MCP client)." in
+  Arg.(value & flag & info [ "mcp-logging" ] ~doc)
+
+let no_mcp_logging =
+  let doc = "Disable MCP protocol logging." in
+  Arg.(value & flag & info [ "no-mcp-logging" ] ~doc)
+
+let mcp_log_level =
+  let doc = "Initial MCP log level (debug, info, warning, error)." in
+  let level_conv =
+    let parse s =
+      match String.lowercase_ascii s with
+      | "debug" -> Ok Mcp.Types.LogLevel.Debug
+      | "info" -> Ok Mcp.Types.LogLevel.Info
+      | "notice" -> Ok Mcp.Types.LogLevel.Notice
+      | "warning" | "warn" -> Ok Mcp.Types.LogLevel.Warning
+      | "error" -> Ok Mcp.Types.LogLevel.Error
+      | "critical" -> Ok Mcp.Types.LogLevel.Critical
+      | "alert" -> Ok Mcp.Types.LogLevel.Alert
+      | "emergency" -> Ok Mcp.Types.LogLevel.Emergency
+      | _ ->
+          Error (`Msg "Invalid log level. Use: debug, info, warning, or error")
+    in
+    let print ppf level =
+      Format.pp_print_string ppf
+        (Yojson.Safe.to_string (Mcp.Types.LogLevel.to_yojson level))
+    in
+    Arg.conv (parse, print)
+  in
+  Arg.(
+    value
+    & opt (some level_conv) None
+    & info [ "mcp-log-level" ] ~docv:"LEVEL" ~doc)
+
 let socket_port =
   let doc = "Listen on TCP port for connections." in
   Arg.(value & opt (some int) None & info [ "socket" ] ~docv:"PORT" ~doc)
@@ -113,6 +148,12 @@ let parse_transport stdio socket_port pipe_path =
 
 let parse_dune_config enable_dune no_dune =
   match (enable_dune, no_dune) with
+  | _, true -> false
+  | true, _ -> true
+  | _ -> true (* Default: enabled *)
+
+let parse_mcp_logging_config mcp_logging no_mcp_logging =
+  match (mcp_logging, no_mcp_logging) with
   | _, true -> false
   | true, _ -> true
   | _ -> true (* Default: enabled *)
@@ -160,14 +201,23 @@ let server_cmd =
           pipe_path
           enable_dune
           no_dune
+          mcp_logging
+          no_mcp_logging
+          mcp_log_level
         ->
           setup_log;
           let transport = parse_transport stdio socket_port pipe_path in
           let enable_dune = parse_dune_config enable_dune no_dune in
-          let config = Ocaml_mcp_server.{ project_root; enable_dune } in
+          let enable_mcp_logging =
+            parse_mcp_logging_config mcp_logging no_mcp_logging
+          in
+          let config =
+            Ocaml_mcp_server.
+              { project_root; enable_dune; enable_mcp_logging; mcp_log_level }
+          in
           run_server config transport ())
       $ setup_log $ project_root $ stdio $ socket_port $ pipe_path $ enable_dune
-      $ no_dune)
+      $ no_dune $ mcp_logging $ no_mcp_logging $ mcp_log_level)
   in
   Cmd.v info term
 

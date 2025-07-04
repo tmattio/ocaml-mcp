@@ -52,6 +52,68 @@ module Tool_result = struct
     create ~content ~structured_content:json ()
 end
 
+module Logging = struct
+  let map_mcp_to_logs_level = function
+    | Mcp.Types.LogLevel.Debug -> Some Logs.Debug
+    | Info -> Some Logs.Info
+    | Notice -> Some Logs.Info (* Map Notice to Info *)
+    | Warning -> Some Logs.Warning
+    | Error -> Some Logs.Error
+    | Critical -> Some Logs.Error (* Map Critical to Error *)
+    | Alert -> Some Logs.Error (* Map Alert to Error *)
+    | Emergency -> Some Logs.Error (* Map Emergency to Error *)
+
+  let send_log_notification ~send_notification ~src ~level ~msg =
+    let mcp_level =
+      match level with
+      | Logs.App -> Mcp.Types.LogLevel.Info
+      | Logs.Error -> Mcp.Types.LogLevel.Error
+      | Logs.Warning -> Mcp.Types.LogLevel.Warning
+      | Logs.Info -> Mcp.Types.LogLevel.Info
+      | Logs.Debug -> Mcp.Types.LogLevel.Debug
+    in
+    let logger = Logs.Src.name src in
+    let data =
+      `Assoc
+        [
+          ("message", `String msg);
+          ("timestamp", `String (string_of_float (Unix.time ())));
+        ]
+    in
+    let params =
+      { Mcp.Notification.Message.level = mcp_level; logger = Some logger; data }
+    in
+    try send_notification (Mcp.Notification.Message params) with _ -> ()
+
+  (* Combine two reporters - inspired by Logs documentation example *)
+  let combine_reporter r1 r2 =
+    let report src level ~over k msgf =
+      let v = r1.Logs.report src level ~over:(fun () -> ()) k msgf in
+      r2.Logs.report src level ~over (fun () -> v) msgf
+    in
+    { Logs.report }
+
+  (* Create a reporter that sends MCP notifications *)
+  let mcp_notifier ~send_notification =
+    let report src level ~over k msgf =
+      let k' () =
+        over ();
+        k ()
+      in
+      msgf @@ fun ?header:_ ?tags:_ fmt ->
+      Format.kasprintf
+        (fun msg ->
+          send_log_notification ~send_notification ~src ~level ~msg;
+          k' ())
+        fmt
+    in
+    { Logs.report }
+
+  (* Add MCP notification to existing reporter *)
+  let add_mcp_notifier ~send_notification existing_reporter =
+    combine_reporter existing_reporter (mcp_notifier ~send_notification)
+end
+
 module Server = struct
   type handler_info = {
     name : string;
@@ -109,6 +171,11 @@ module Server = struct
 
   type pagination_config = { page_size : int }
 
+  type mcp_logging_config = {
+    enabled : bool;
+    initial_level : Types.LogLevel.t option;
+  }
+
   type t = {
     server_info : Types.ServerInfo.t;
     mutable capabilities : Types.Capabilities.server;
@@ -117,6 +184,7 @@ module Server = struct
     prompts : (string, prompt_handler) Hashtbl.t;
     mutable subscription_handler : subscription_handler option;
     pagination_config : pagination_config option;
+    mcp_logging_config : mcp_logging_config;
   }
 
   module type Json_converter = sig
@@ -136,7 +204,14 @@ module Server = struct
           resources = None;
           tools = None;
           completions = None;
-        }) ?pagination_config () =
+        }) ?pagination_config
+      ?(mcp_logging_config = { enabled = true; initial_level = None }) () =
+    (* Enable logging capability if MCP logging is enabled *)
+    let capabilities =
+      if mcp_logging_config.enabled then
+        { capabilities with logging = Some (`Assoc []) }
+      else capabilities
+    in
     {
       server_info;
       capabilities;
@@ -145,6 +220,7 @@ module Server = struct
       prompts = Hashtbl.create 16;
       subscription_handler = None;
       pagination_config;
+      mcp_logging_config;
     }
 
   (* Helper function for tools with no arguments *)
@@ -672,6 +748,15 @@ module Server = struct
             | Some handler ->
                 let ctx = make_context (String "resource-unsubscribe") None in
                 handler.on_unsubscribe params.uri ctx);
+        on_logging_set_level =
+          (fun params ->
+            let ocaml_level = Logging.map_mcp_to_logs_level params.level in
+            Logs.set_level ocaml_level;
+            Log.info (fun m ->
+                m "MCP log level set to %s"
+                  (Yojson.Safe.to_string
+                     (Mcp.Types.LogLevel.to_yojson params.level)));
+            Ok ());
       }
     in
 
@@ -688,6 +773,31 @@ module Server = struct
          ());
 
     server
+
+  (* Set up MCP logging if enabled - call this after creating the MCP server *)
+  let setup_mcp_logging t mcp_server =
+    if t.mcp_logging_config.enabled then (
+      (* Set initial MCP log level if specified *)
+      (match t.mcp_logging_config.initial_level with
+      | Some level ->
+          let ocaml_level = Logging.map_mcp_to_logs_level level in
+          Logs.set_level ocaml_level
+      | None -> ());
+
+      (* Create notification sender *)
+      let send_notification notif =
+        let _msg = Mcp.Server.send_notification mcp_server notif in
+        ()
+      in
+
+      (* Add MCP notifier to existing reporter *)
+      let current_reporter = Logs.reporter () in
+      let combined_reporter =
+        Logging.add_mcp_notifier ~send_notification current_reporter
+      in
+      Logs.set_reporter combined_reporter;
+
+      Log.info (fun m -> m "MCP logging enabled"))
 end
 
 module Client = struct
