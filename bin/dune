@@ -1,0 +1,22 @@
+(executable
+ (package mcp-eio)
+ (public_name mcp)
+ (name mcp_client)
+ (modules mcp_client)
+ (libraries mcp mcp-eio eio eio_main))
+
+(executable
+ (public_name ocaml-mcp-server)
+ (package ocaml-mcp-server)
+ (name ocaml_mcp_server)
+ (modules ocaml_mcp_server)
+ (libraries
+  ocaml_mcp_server
+  eio_main
+  logs
+  logs.fmt
+  fmt
+  fmt.tty
+  fmt.cli
+  logs.cli
+  cmdliner))

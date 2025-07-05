@@ -1,5 +1,0 @@
-(executable
- (package mcp-eio)
- (public_name mcp-client)
- (name main)
- (libraries mcp mcp-eio eio eio_main))
