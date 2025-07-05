@@ -20,7 +20,6 @@
   merlin-lib.query_commands
   merlin-lib.analysis
   compiler-libs.common
-  compiler-libs.toplevel
   ocamlformat-lib)
  (preprocess
   (pps ppx_deriving_yojson)))

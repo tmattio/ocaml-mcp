@@ -1,7 +1,6 @@
 (executable
  (public_name ocaml-mcp-server)
  (package ocaml-mcp-server)
- (modes byte)
  (name main)
  (libraries
   ocaml_mcp_server
