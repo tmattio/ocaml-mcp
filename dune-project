@@ -53,7 +53,7 @@
   jsonschema
   re
   cmdliner
-  merlin-lib
+  (merlin-lib (>= 5.5))
   ocamlformat-lib
   (ppx_deriving_yojson
    (>= 3.9.0))))
