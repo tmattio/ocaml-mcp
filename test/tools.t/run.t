@@ -1,4 +1,4 @@
-Test OCaml MCP Server tools functionality using mcp-client
+Test OCaml MCP Server tools functionality using mcp
 
 Start the MCP server in the background
   $ ocaml-mcp-server --pipe test.sock --no-dune -vv &
@@ -70,7 +70,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [DEBUG] handle_module_signature called with module_path: 
+  ocaml-mcp-server: [DEBUG] handle_module_signature called with module_path:
   ocaml-mcp-server: [INFO] Tool ocaml/module-signature executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
@@ -79,15 +79,15 @@ Start the MCP server in the background
   $ sleep 1
 
 Test server info:
-  $ mcp-client --pipe test.sock info
+  $ mcp --pipe test.sock info
   Server: ocaml-mcp-server v0.1.0
-  
+
   Capabilities:
   - Tools
   - Logging
 
 List available tools:
-  $ mcp-client --pipe test.sock list tools
+  $ mcp --pipe test.sock list tools
   Tools (10):
   - fs/write: Write content to a file. For OCaml files (.ml/.mli), automatically formats the code and returns diagnostics.
   - dune/build-status: Get the current build status from dune, including any errors or warnings
@@ -101,19 +101,19 @@ List available tools:
   - ocaml/eval: Evaluate OCaml expressions in project context
 
 Test calling ocaml/module-signature tool with List module:
-  $ mcp-client --pipe test.sock call ocaml/module-signature -a '{"module_path":["List"]}'
+  $ mcp --pipe test.sock call ocaml/module-signature -a '{"module_path":["List"]}'
   Could not find module List in build artifacts. Make sure the project is built with dune.
 
 Test calling non-existent tool:
-  $ mcp-client --pipe test.sock call nonexistent/tool 2>&1 | head -1
+  $ mcp --pipe test.sock call nonexistent/tool 2>&1 | head -1
   Fatal error: exception Failure("Request failed: JSON-RPC error")
 
 Test with invalid arguments for module-signature:
-  $ mcp-client --pipe test.sock call ocaml/module-signature -a '{"wrong_field":"value"}' 2>&1 | head -1
+  $ mcp --pipe test.sock call ocaml/module-signature -a '{"wrong_field":"value"}' 2>&1 | head -1
   Fatal error: exception Failure("Request failed: JSON-RPC error")
 
 Test with empty module path:
-  $ mcp-client --pipe test.sock call ocaml/module-signature -a '{"module_path":[]}' 
+  $ mcp --pipe test.sock call ocaml/module-signature -a '{"module_path":[]}'
   Could not find module  in build artifacts. Make sure the project is built with dune.
 
 Kill the server

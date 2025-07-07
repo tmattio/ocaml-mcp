@@ -24,17 +24,17 @@ Start the MCP server for the test project:
   $ sleep 1
 
 Test calling project-structure tool (no args needed):
-  $ mcp-client --pipe test.sock call ocaml/project-structure
+  $ mcp --pipe test.sock call ocaml/project-structure
   Project Root: $TESTCASE_ROOT/test_project
   Build Context: default
-  
+
   COMPONENT: Executable
     Name: main
     Directory: bin
     Dependencies: mylib
     Action: Build: dune build bin/main.exe
     Action: Run: dune exec bin/main.exe
-  
+
   COMPONENT: Library
     Name: mylib
     Directory: lib

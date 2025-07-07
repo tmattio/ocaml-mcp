@@ -204,7 +204,7 @@ Start the MCP server in the background
   $ sleep 1
 
 Basic fs/write - Create a simple OCaml file:
-  $ mcp-client --pipe test.sock call fs/write -a '{"file_path":"hello.ml","content":"let greeting = \"Hello, world!\"\nlet () = print_endline greeting"}'
+  $ mcp --pipe test.sock call fs/write -a '{"file_path":"hello.ml","content":"let greeting = \"Hello, world!\"\nlet () = print_endline greeting"}'
   Wrote ./hello.ml (formatted, no diagnostics)
 
 Verify the file was created:
@@ -213,11 +213,11 @@ Verify the file was created:
   let () = print_endline greeting
 
 Basic fs/read - Read the file back:
-  $ mcp-client --pipe test.sock call fs/read -a '{"file_path":"hello.ml"}'
+  $ mcp --pipe test.sock call fs/read -a '{"file_path":"hello.ml"}'
   Read ./hello.ml (no diagnostics)
 
 Basic fs/edit - Modify the greeting:
-  $ mcp-client --pipe test.sock call fs/edit -a '{"file_path":"hello.ml","old_string":"\"Hello, world!\"","new_string":"\"Hello, OCaml!\""}'
+  $ mcp --pipe test.sock call fs/edit -a '{"file_path":"hello.ml","old_string":"\"Hello, world!\"","new_string":"\"Hello, OCaml!\""}'
   Edited ./hello.ml (1 replacements, formatted, no diagnostics)
 
 Verify the edit:
@@ -226,47 +226,47 @@ Verify the edit:
   let () = print_endline greeting
 
 Test automatic formatting with fs/write:
-  $ mcp-client --pipe test.sock call fs/write -a '{"file_path":"unformatted.ml","content":"let    x=1+2\n  let y  =   3"}' 2>&1 | grep -q "format_result" && echo "Formatting attempted"
+  $ mcp --pipe test.sock call fs/write -a '{"file_path":"unformatted.ml","content":"let    x=1+2\n  let y  =   3"}' 2>&1 | grep -q "format_result" && echo "Formatting attempted"
   [1]
 
 Test fs/write with modules:
-  $ mcp-client --pipe test.sock call fs/write -a '{"file_path":"module.ml","content":"module M = struct\n  let value = 42\nend"}'
+  $ mcp --pipe test.sock call fs/write -a '{"file_path":"module.ml","content":"module M = struct\n  let value = 42\nend"}'
   Wrote ./module.ml (formatted, no diagnostics)
 
 Test different OCaml file extensions (.mli):
-  $ mcp-client --pipe test.sock call fs/write -a '{"file_path":"interface.mli","content":"val compute : int -> int"}'
+  $ mcp --pipe test.sock call fs/write -a '{"file_path":"interface.mli","content":"val compute : int -> int"}'
   Wrote ./interface.mli (formatted, 1 diagnostics)
 
-  $ mcp-client --pipe test.sock call fs/read -a '{"file_path":"interface.mli"}' 2>&1 | grep "file_type"
+  $ mcp --pipe test.sock call fs/read -a '{"file_path":"interface.mli"}' 2>&1 | grep "file_type"
   [1]
 
 Test fs/write with a non-OCaml file:
-  $ mcp-client --pipe test.sock call fs/write -a '{"file_path":"README.md","content":"# Test Project\n\nThis is a test."}'
+  $ mcp --pipe test.sock call fs/write -a '{"file_path":"README.md","content":"# Test Project\n\nThis is a test."}'
   Successfully wrote to ./README.md
 
 Test fs/read on non-OCaml file:
-  $ mcp-client --pipe test.sock call fs/read -a '{"file_path":"README.md"}'
+  $ mcp --pipe test.sock call fs/read -a '{"file_path":"README.md"}'
   # Test Project
-  
+
   This is a test.
 
 Test fs/edit with non-existent file:
-  $ mcp-client --pipe test.sock call fs/edit -a '{"file_path":"nonexistent.ml","old_string":"foo","new_string":"bar"}' 2>&1 | grep -o "File not found"
+  $ mcp --pipe test.sock call fs/edit -a '{"file_path":"nonexistent.ml","old_string":"foo","new_string":"bar"}' 2>&1 | grep -o "File not found"
   File not found
 
 Test fs/read with non-existent file:
-  $ mcp-client --pipe test.sock call fs/read -a '{"file_path":"nonexistent.ml"}' 2>&1 | grep -o "File not found"
+  $ mcp --pipe test.sock call fs/read -a '{"file_path":"nonexistent.ml"}' 2>&1 | grep -o "File not found"
   File not found
 
 Test fs/write with invalid OCaml code (should still write but report issues):
-  $ mcp-client --pipe test.sock call fs/write -a '{"file_path":"bad.ml","content":"let x = "}' 2>&1 | grep -q "file_path" && echo "File written despite syntax error"
+  $ mcp --pipe test.sock call fs/write -a '{"file_path":"bad.ml","content":"let x = "}' 2>&1 | grep -q "file_path" && echo "File written despite syntax error"
   [1]
 
 Test fs/edit with replace_all option:
-  $ mcp-client --pipe test.sock call fs/write -a '{"file_path":"multi.ml","content":"let x = 1\nlet y = 1\nlet z = 1"}'
+  $ mcp --pipe test.sock call fs/write -a '{"file_path":"multi.ml","content":"let x = 1\nlet y = 1\nlet z = 1"}'
   Wrote ./multi.ml (formatted, no diagnostics)
 
-  $ mcp-client --pipe test.sock call fs/edit -a '{"file_path":"multi.ml","old_string":"1","new_string":"42","replace_all":true}'
+  $ mcp --pipe test.sock call fs/edit -a '{"file_path":"multi.ml","old_string":"1","new_string":"42","replace_all":true}'
   Edited ./multi.ml (3 replacements, formatted, no diagnostics)
 
   $ cat multi.ml
@@ -275,10 +275,10 @@ Test fs/edit with replace_all option:
   let z = 42
 
 Test fs/edit preserving OCaml structure:
-  $ mcp-client --pipe test.sock call fs/write -a '{"file_path":"func.ml","content":"let add x y = x + y\nlet multiply x y = x * y"}'
+  $ mcp --pipe test.sock call fs/write -a '{"file_path":"func.ml","content":"let add x y = x + y\nlet multiply x y = x * y"}'
   Wrote ./func.ml (formatted, no diagnostics)
 
-  $ mcp-client --pipe test.sock call fs/edit -a '{"file_path":"func.ml","old_string":"add","new_string":"sum"}'
+  $ mcp --pipe test.sock call fs/edit -a '{"file_path":"func.ml","old_string":"add","new_string":"sum"}'
   Edited ./func.ml (1 replacements, formatted, no diagnostics)
 
   $ cat func.ml
