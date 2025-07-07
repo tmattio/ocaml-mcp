@@ -6,15 +6,15 @@ Start the HTTP server:
   $ sleep 1
 
 Test server info:
-  $ mcp-client --socket 8080 info
+  $ mcp --socket 8080 info
   Server: ocaml-mcp-server v0.1.0
-  
+
   Capabilities:
   - Tools
   - Logging
 
 List tools:
-  $ mcp-client --socket 8080 list tools
+  $ mcp --socket 8080 list tools
   Tools (10):
   - fs/write: Write content to a file. For OCaml files (.ml/.mli), automatically formats the code and returns diagnostics.
   - dune/build-status: Get the current build status from dune, including any errors or warnings

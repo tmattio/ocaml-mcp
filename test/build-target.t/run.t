@@ -100,37 +100,37 @@ Start dune RPC and MCP server:
 
 Test building the library:
 
-  $ mcp-client --pipe test.sock call dune/build-target -a '{"targets":["lib/mylib.cma"]}'
+  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["lib/mylib.cma"]}'
   Building targets: lib/mylib.cma
   Success
 
 Test building the executable:
 
-  $ mcp-client --pipe test.sock call dune/build-target -a '{"targets":["bin/main.exe"]}'
+  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["bin/main.exe"]}'
   Building targets: bin/main.exe
   Success
 
 Test building multiple targets:
 
-  $ mcp-client --pipe test.sock call dune/build-target -a '{"targets":["lib/mylib.cma", "bin/main.exe"]}'
+  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["lib/mylib.cma", "bin/main.exe"]}'
   Building targets: lib/mylib.cma bin/main.exe
   Success
 
 Test building all:
 
-  $ mcp-client --pipe test.sock call dune/build-target -a '{"targets":["@all"]}'
+  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["@all"]}'
   Building targets: @all
   Success
 
 Test building the test:
 
-  $ mcp-client --pipe test.sock call dune/build-target -a '{"targets":["@test/runtest"]}'
+  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["@test/runtest"]}'
   Building targets: @test/runtest
   Success
 
 Test building a non-existent target:
 
-  $ mcp-client --pipe test.sock call dune/build-target -a '{"targets":["nonexistent.exe"]}'
+  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["nonexistent.exe"]}'
   Building targets: nonexistent.exe
   Error: Don't know how to build nonexistent.exe
   Error: Build failed with 1 error.

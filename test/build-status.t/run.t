@@ -38,7 +38,7 @@ Start dune RPC and MCP server:
   $ SERVER_PID=$!
   $ sleep 1
 
-  $ mcp-client --pipe test.sock call dune/build-status
+  $ mcp --pipe test.sock call dune/build-status
   Build waiting...
 
 Clean up:
