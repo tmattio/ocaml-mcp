@@ -5,7 +5,7 @@ open Eio
 
 type args = { code : string } [@@deriving yojson]
 
-let name = "ocaml/eval"
+let name = "ocaml_eval"
 let description = "Evaluate OCaml expressions in project context"
 
 (* Get initialization directives from dune *)

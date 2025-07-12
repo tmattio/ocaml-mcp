@@ -4,7 +4,7 @@ open Mcp_sdk
 
 type args = { module_path : string list } [@@deriving yojson]
 
-let name = "ocaml/module-signature"
+let name = "ocaml_module_signature"
 let description = "Get the signature of an OCaml module from build artifacts"
 
 let handle ~sw:_ env project_root args _ctx =

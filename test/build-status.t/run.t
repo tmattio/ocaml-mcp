@@ -31,14 +31,14 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [INFO] Tool dune/build-status executed successfully
+  ocaml-mcp-server: [INFO] Tool dune_build_status executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   $ SERVER_PID=$!
   $ sleep 1
 
-  $ mcp --pipe test.sock call dune/build-status
+  $ mcp --pipe test.sock call dune_build_status
   Build waiting...
 
 Clean up:

@@ -5,7 +5,7 @@ open Mcp_sdk
 type args = { test_names : string list option [@default None] }
 [@@deriving yojson]
 
-let name = "dune/run-tests"
+let name = "dune_run_tests"
 let description = "Execute tests and report results"
 
 let handle dune_rpc args _ctx =

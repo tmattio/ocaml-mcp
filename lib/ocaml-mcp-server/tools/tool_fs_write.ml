@@ -3,7 +3,7 @@ open Eio
 
 type args = { file_path : string; content : string } [@@deriving yojson]
 
-let name = "fs/write"
+let name = "fs_write"
 
 let description =
   "Write content to a file. For OCaml files (.ml/.mli), automatically formats \

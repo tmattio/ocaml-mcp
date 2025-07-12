@@ -33,7 +33,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
   ocaml-mcp-server: [DEBUG] handle_module_signature called with module_path: List
-  ocaml-mcp-server: [INFO] Tool ocaml/module-signature executed successfully
+  ocaml-mcp-server: [INFO] Tool ocaml_module_signature executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
@@ -57,7 +57,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [ERROR] Tool ocaml/module-signature failed: Input validation failed: jsonschema validation failed with inline://schema
+  ocaml-mcp-server: [ERROR] Tool ocaml_module_signature failed: Input validation failed: jsonschema validation failed with inline://schema
     at '': missing properties module_path
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
@@ -71,7 +71,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
   ocaml-mcp-server: [DEBUG] handle_module_signature called with module_path:
-  ocaml-mcp-server: [INFO] Tool ocaml/module-signature executed successfully
+  ocaml-mcp-server: [INFO] Tool ocaml_module_signature executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
@@ -89,19 +89,19 @@ Test server info:
 List available tools:
   $ mcp --pipe test.sock list tools
   Tools (10):
-  - fs/write: Write content to a file. For OCaml files (.ml/.mli), automatically formats the code and returns diagnostics.
-  - dune/build-status: Get the current build status from dune, including any errors or warnings
-  - ocaml/find-references: Find all usages of a symbol
-  - dune/run-tests: Execute tests and report results
-  - fs/edit: Replace text within a file. For OCaml files (.ml/.mli), automatically formats the result and returns diagnostics.
-  - ocaml/module-signature: Get the signature of an OCaml module from build artifacts
-  - ocaml/find-definition: Find where a symbol is defined
-  - dune/build-target: Build specific files/libraries/tests
-  - ocaml/project-structure: Return project layout, libraries, executables
-  - ocaml/eval: Evaluate OCaml expressions in project context
+  - fs_write: Write content to a file. For OCaml files (.ml/.mli), automatically formats the code and returns diagnostics.
+  - dune_build_status: Get the current build status from dune, including any errors or warnings
+  - ocaml_find_references: Find all usages of a symbol
+  - dune_run_tests: Execute tests and report results
+  - fs_edit: Replace text within a file. For OCaml files (.ml/.mli), automatically formats the result and returns diagnostics.
+  - ocaml_module_signature: Get the signature of an OCaml module from build artifacts
+  - ocaml_find_definition: Find where a symbol is defined
+  - dune_build_target: Build specific files/libraries/tests
+  - ocaml_project_structure: Return project layout, libraries, executables
+  - ocaml_eval: Evaluate OCaml expressions in project context
 
-Test calling ocaml/module-signature tool with List module:
-  $ mcp --pipe test.sock call ocaml/module-signature -a '{"module_path":["List"]}'
+Test calling ocaml_module_signature tool with List module:
+  $ mcp --pipe test.sock call ocaml_module_signature -a '{"module_path":["List"]}'
   Could not find module List in build artifacts. Make sure the project is built with dune.
 
 Test calling non-existent tool:
@@ -109,11 +109,11 @@ Test calling non-existent tool:
   Fatal error: exception Failure("Request failed: JSON-RPC error")
 
 Test with invalid arguments for module-signature:
-  $ mcp --pipe test.sock call ocaml/module-signature -a '{"wrong_field":"value"}' 2>&1 | head -1
+  $ mcp --pipe test.sock call ocaml_module_signature -a '{"wrong_field":"value"}' 2>&1 | head -1
   Fatal error: exception Failure("Request failed: JSON-RPC error")
 
 Test with empty module path:
-  $ mcp --pipe test.sock call ocaml/module-signature -a '{"module_path":[]}'
+  $ mcp --pipe test.sock call ocaml_module_signature -a '{"module_path":[]}'
   Could not find module  in build artifacts. Make sure the project is built with dune.
 
 Kill the server

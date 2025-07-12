@@ -201,20 +201,16 @@ module Capabilities = struct
   }
   [@@deriving yojson]
 
-  type prompts = {
-    list_changed : bool option; [@default None] [@key "listChanged"]
-  }
+  type prompts = { list_changed : bool option [@key "listChanged"] }
   [@@deriving yojson]
 
   type resources = {
-    subscribe : bool option; [@default None]
-    list_changed : bool option; [@default None] [@key "listChanged"]
+    subscribe : bool option;
+    list_changed : bool option; [@key "listChanged"]
   }
   [@@deriving yojson]
 
-  type tools = {
-    list_changed : bool option; [@default None] [@key "listChanged"]
-  }
+  type tools = { list_changed : bool option [@key "listChanged"] }
   [@@deriving yojson]
 
   type client = {

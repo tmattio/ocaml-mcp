@@ -5,7 +5,7 @@ open Eio
 
 type args = { file_path : string; line : int; column : int } [@@deriving yojson]
 
-let name = "ocaml/find-references"
+let name = "ocaml_find_references"
 let description = "Find all usages of a symbol"
 
 let handle ~sw:_ env merlin_client args _ctx =

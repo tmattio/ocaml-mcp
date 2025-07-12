@@ -5,7 +5,7 @@ open Mcp_sdk
 (* Tool argument types *)
 type args = { targets : string list option [@default None] } [@@deriving yojson]
 
-let name = "dune/build-status"
+let name = "dune_build_status"
 
 let description =
   "Get the current build status from dune, including any errors or warnings"

@@ -5,7 +5,7 @@ open Eio
 
 type args = { file_path : string; line : int; column : int } [@@deriving yojson]
 
-let name = "ocaml/find-definition"
+let name = "ocaml_find_definition"
 let description = "Find where a symbol is defined"
 
 let handle env merlin_client args _ctx =

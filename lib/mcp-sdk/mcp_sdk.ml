@@ -209,7 +209,10 @@ module Server = struct
     (* Enable logging capability if MCP logging is enabled *)
     let capabilities =
       if mcp_logging_config.enabled then
-        { capabilities with logging = Some (`Assoc []) }
+        {
+          capabilities with
+          logging = Some (`Assoc [ ("enabled", `Bool true) ]);
+        }
       else capabilities
     in
     {
@@ -259,7 +262,7 @@ module Server = struct
     let th : tool_handler =
       {
         info = { name; title; description };
-        schema = None;
+        schema = Some (`Assoc [ ("type", `String "object") ]);
         output_schema;
         annotations;
         handler = typed_handler;
@@ -267,7 +270,7 @@ module Server = struct
     in
     Hashtbl.replace t.tools name th;
     t.capabilities <-
-      { t.capabilities with tools = Some { list_changed = None } }
+      { t.capabilities with tools = Some { list_changed = Some false } }
 
   (* Main tool function *)
   let tool : type a.
@@ -357,7 +360,7 @@ module Server = struct
         in
         Hashtbl.replace t.tools name th;
         t.capabilities <-
-          { t.capabilities with tools = Some { list_changed = None } }
+          { t.capabilities with tools = Some { list_changed = Some false } }
 
   let resource t name ~uri ?description ?mime_type handler =
     let resource_handler =
@@ -416,7 +419,7 @@ module Server = struct
     in
     Hashtbl.replace t.prompts name ph;
     t.capabilities <-
-      { t.capabilities with prompts = Some { list_changed = None } }
+      { t.capabilities with prompts = Some { list_changed = Some false } }
 
   (* Main prompt function *)
   let set_subscription_handler t ~on_subscribe ~on_unsubscribe =

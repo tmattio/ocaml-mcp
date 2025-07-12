@@ -8,7 +8,7 @@ type args = {
 }
 [@@deriving yojson]
 
-let name = "fs/read"
+let name = "fs_read"
 
 let description =
   "Read the content of any file. When reading OCaml files (.ml/.mli), the \

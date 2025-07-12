@@ -16,7 +16,7 @@ Start the MCP server for the test project:
   ocaml-mcp-server: [DEBUG] Running dune describe workspace
   ocaml-mcp-server: [DEBUG] Found root: $TESTCASE_ROOT/test_project
   ocaml-mcp-server: [DEBUG] Parsed 2 components
-  ocaml-mcp-server: [INFO] Tool ocaml/project-structure executed successfully
+  ocaml-mcp-server: [INFO] Tool ocaml_project_structure executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
@@ -24,7 +24,7 @@ Start the MCP server for the test project:
   $ sleep 1
 
 Test calling project-structure tool (no args needed):
-  $ mcp --pipe test.sock call ocaml/project-structure
+  $ mcp --pipe test.sock call ocaml_project_structure
   Project Root: $TESTCASE_ROOT/test_project
   Build Context: default
 

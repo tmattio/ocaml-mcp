@@ -5,7 +5,7 @@ open Eio
 
 type args = { file_path : string; line : int; column : int } [@@deriving yojson]
 
-let name = "ocaml/type-at-pos"
+let name = "ocaml_type_at_pos"
 let description = "Get type of expression at specific file position"
 
 let handle ~sw:_ env merlin_client args _ctx =

@@ -5,7 +5,7 @@ open Eio
 
 type args = { targets : string list } [@@deriving yojson]
 
-let name = "dune/build-target"
+let name = "dune_build_target"
 let description = "Build specific files/libraries/tests"
 
 let handle _sw env project_root _dune_rpc args _ctx =

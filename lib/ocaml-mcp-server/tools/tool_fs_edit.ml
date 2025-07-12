@@ -10,7 +10,7 @@ type args = {
 }
 [@@deriving yojson]
 
-let name = "fs/edit"
+let name = "fs_edit"
 
 let description =
   "Replace text within a file. For OCaml files (.ml/.mli), automatically \

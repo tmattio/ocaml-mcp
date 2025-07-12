@@ -87,16 +87,6 @@ let create_server ~sw ~env ~config =
   let server =
     Server.create
       ~server_info:{ name = "ocaml-mcp-server"; version = "0.1.0" }
-      ~capabilities:
-        {
-          Mcp.Types.Capabilities.experimental = None;
-          logging = None;
-          (* Will be set by SDK based on mcp_logging_config *)
-          completions = None;
-          prompts = None;
-          resources = None;
-          tools = Some { list_changed = None };
-        }
       ~pagination_config:{ page_size = 10 }
         (* Demonstrate pagination with 10 items per page *)
       ~mcp_logging_config ()

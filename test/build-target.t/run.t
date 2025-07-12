@@ -26,7 +26,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [INFO] Tool dune/build-target executed successfully
+  ocaml-mcp-server: [INFO] Tool dune_build_target executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
@@ -39,7 +39,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [INFO] Tool dune/build-target executed successfully
+  ocaml-mcp-server: [INFO] Tool dune_build_target executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
@@ -52,7 +52,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [INFO] Tool dune/build-target executed successfully
+  ocaml-mcp-server: [INFO] Tool dune_build_target executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
@@ -65,7 +65,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [INFO] Tool dune/build-target executed successfully
+  ocaml-mcp-server: [INFO] Tool dune_build_target executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
@@ -78,7 +78,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [INFO] Tool dune/build-target executed successfully
+  ocaml-mcp-server: [INFO] Tool dune_build_target executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
@@ -91,7 +91,7 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [INFO] Tool dune/build-target executed successfully
+  ocaml-mcp-server: [INFO] Tool dune_build_target executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
@@ -100,37 +100,37 @@ Start dune RPC and MCP server:
 
 Test building the library:
 
-  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["lib/mylib.cma"]}'
+  $ mcp --pipe test.sock call dune_build_target -a '{"targets":["lib/mylib.cma"]}'
   Building targets: lib/mylib.cma
   Success
 
 Test building the executable:
 
-  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["bin/main.exe"]}'
+  $ mcp --pipe test.sock call dune_build_target -a '{"targets":["bin/main.exe"]}'
   Building targets: bin/main.exe
   Success
 
 Test building multiple targets:
 
-  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["lib/mylib.cma", "bin/main.exe"]}'
+  $ mcp --pipe test.sock call dune_build_target -a '{"targets":["lib/mylib.cma", "bin/main.exe"]}'
   Building targets: lib/mylib.cma bin/main.exe
   Success
 
 Test building all:
 
-  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["@all"]}'
+  $ mcp --pipe test.sock call dune_build_target -a '{"targets":["@all"]}'
   Building targets: @all
   Success
 
 Test building the test:
 
-  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["@test/runtest"]}'
+  $ mcp --pipe test.sock call dune_build_target -a '{"targets":["@test/runtest"]}'
   Building targets: @test/runtest
   Success
 
 Test building a non-existent target:
 
-  $ mcp --pipe test.sock call dune/build-target -a '{"targets":["nonexistent.exe"]}'
+  $ mcp --pipe test.sock call dune_build_target -a '{"targets":["nonexistent.exe"]}'
   Building targets: nonexistent.exe
   Error: Don't know how to build nonexistent.exe
   Error: Build failed with 1 error.

@@ -6,7 +6,7 @@ open Eio
 (* Tool argument types *)
 type args = unit [@@deriving yojson]
 
-let name = "ocaml/project-structure"
+let name = "ocaml_project_structure"
 let description = "Return project layout, libraries, executables"
 let src = Logs.Src.create "project-structure" ~doc:"Project structure tool"
 

@@ -14,8 +14,8 @@ depends: [
   "dune" {>= "3.19"}
   "ocaml"
   "jsonrpc"
-  "yojson"
   "jsonschema"
+  "yojson"
   "ppx_deriving_yojson"
   "logs"
   "odoc" {with-doc}
