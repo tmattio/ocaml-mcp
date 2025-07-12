@@ -15,6 +15,7 @@ depends: [
   "ocaml"
   "jsonrpc"
   "yojson"
+  "jsonschema"
   "ppx_deriving_yojson"
   "logs"
   "odoc" {with-doc}
