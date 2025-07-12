@@ -70,7 +70,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [DEBUG] handle_module_signature called with module_path:
+  ocaml-mcp-server: [DEBUG] handle_module_signature called with module_path: 
   ocaml-mcp-server: [INFO] Tool ocaml_module_signature executed successfully
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
@@ -81,7 +81,7 @@ Start the MCP server in the background
 Test server info:
   $ mcp --pipe test.sock info
   Server: ocaml-mcp-server v0.1.0
-
+  
   Capabilities:
   - Tools
   - Logging
@@ -89,16 +89,16 @@ Test server info:
 List available tools:
   $ mcp --pipe test.sock list tools
   Tools (10):
-  - fs_write: Write content to a file. For OCaml files (.ml/.mli), automatically formats the code and returns diagnostics.
-  - dune_build_status: Get the current build status from dune, including any errors or warnings
-  - ocaml_find_references: Find all usages of a symbol
-  - dune_run_tests: Execute tests and report results
-  - fs_edit: Replace text within a file. For OCaml files (.ml/.mli), automatically formats the result and returns diagnostics.
   - ocaml_module_signature: Get the signature of an OCaml module from build artifacts
-  - ocaml_find_definition: Find where a symbol is defined
-  - dune_build_target: Build specific files/libraries/tests
   - ocaml_project_structure: Return project layout, libraries, executables
-  - ocaml_eval: Evaluate OCaml expressions in project context
+  - ocaml_type_at_pos: Get type of expression at specific file position
+  - dune_build_status: Get the current build status from dune, including any errors or warnings
+  - ocaml_find_definition: Find where a symbol is defined
+  - fs_edit: Replace text within a file. For OCaml files (.ml/.mli), automatically formats the result and returns diagnostics.
+  - dune_run_tests: Execute tests and report results
+  - dune_build_target: Build specific files/libraries/tests
+  - ocaml_find_references: Find all usages of a symbol
+  - fs_write: Write content to a file. For OCaml files (.ml/.mli), automatically formats the code and returns diagnostics.
 
 Test calling ocaml_module_signature tool with List module:
   $ mcp --pipe test.sock call ocaml_module_signature -a '{"module_path":["List"]}'

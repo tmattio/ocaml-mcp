@@ -81,27 +81,41 @@ Start the MCP server in the background
 
 Test evaluating a simple expression:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"1 + 1"}'
+  Enter #help;; for help.
   - : int = 2
 
 Test evaluating a let binding:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"let x = 42"}'
+  Enter #help;; for help.
   val x : int = 42
 
 Test evaluating an expression using the previous binding:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"x * 2"}'
-  - : int = 84
+  Enter #help;; for help.
+  Line 1, characters 0-1:
+  1 | x * 2;;
+      ^
+  Error: Unbound value x
 
 Test evaluating a function definition:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"let double x = x * 2"}'
+  Enter #help;; for help.
   val double : int -> int = <fun>
 
 Test calling the function:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"double 21"}'
-  - : int = 42
+  Enter #help;; for help.
+  Line 1, characters 0-6:
+  1 | double 21;;
+      ^^^^^^
+  Error: Unbound value double
 
 Test evaluating invalid code:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"let x ="}'
-  File "_none_", line 1, characters 7-9:
+  Enter #help;; for help.
+  Line 1, characters 7-9:
+  1 | let x =;;
+             ^^
   Error: Syntax error
 
 Kill the server

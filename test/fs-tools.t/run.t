@@ -247,7 +247,7 @@ Test fs_write with a non-OCaml file:
 Test fs_read on non-OCaml file:
   $ mcp --pipe test.sock call fs_read -a '{"file_path":"README.md"}'
   # Test Project
-
+  
   This is a test.
 
 Test fs_edit with non-existent file:

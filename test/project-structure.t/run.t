@@ -27,14 +27,14 @@ Test calling project-structure tool (no args needed):
   $ mcp --pipe test.sock call ocaml_project_structure
   Project Root: $TESTCASE_ROOT/test_project
   Build Context: default
-
+  
   COMPONENT: Executable
     Name: main
     Directory: bin
     Dependencies: mylib
     Action: Build: dune build bin/main.exe
     Action: Run: dune exec bin/main.exe
-
+  
   COMPONENT: Library
     Name: mylib
     Directory: lib
