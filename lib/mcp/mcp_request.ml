@@ -323,7 +323,7 @@ let params_to_yojson = function
 
 let of_jsonrpc (method_ : string) (params : Yojson.Safe.t option) :
     (t, string) result =
-  let params = Option.value params ~default:`Null in
+  let params = Option.value params ~default:(`Assoc []) in
   match method_ with
   | "initialize" -> (
       match Initialize.params_of_yojson params with

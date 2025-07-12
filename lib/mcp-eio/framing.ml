@@ -1,4 +1,8 @@
-(** Message framing utilities for MCP using Content-Length headers *)
+(** Message framing utilities for newline-delimited JSON.
+
+    This module handles the serialization and deserialization of JSON-RPC
+    messages using newline-delimited JSON (NDJSON) format. It provides
+    conversion between different JSON representations and I/O operations. *)
 
 open Eio
 
@@ -41,47 +45,25 @@ let write_packet (sink : _ Flow.sink) (packet : Jsonrpc.Packet.t) =
   let json = Jsonrpc.Packet.yojson_of_t packet in
   let yojson = json_to_yojson json in
   let content = Yojson.Safe.to_string yojson in
-  let content_length = String.length content in
-  let header = Printf.sprintf "Content-Length: %d\r\n\r\n" content_length in
-  Flow.write sink [ Cstruct.of_string header; Cstruct.of_string content ]
+  (* Write as newline-delimited JSON *)
+  Flow.write sink [ Cstruct.of_string content; Cstruct.of_string "\n" ]
 
-let read_headers (reader : Buf_read.t) : (string * string) list =
-  let rec loop acc =
-    match Buf_read.line reader with
-    | "" | "\r" -> List.rev acc (* Empty line signals end of headers *)
-    | line -> (
-        (* Remove trailing \r if present *)
-        let line =
-          if String.length line > 0 && line.[String.length line - 1] = '\r' then
-            String.sub line 0 (String.length line - 1)
-          else line
-        in
-        (* Parse header *)
-        match String.index_opt line ':' with
-        | None -> loop acc (* Skip malformed headers *)
-        | Some idx ->
-            let key = String.sub line 0 idx in
-            let value_start = idx + 1 in
-            let value_len = String.length line - value_start in
-            let value = String.sub line value_start value_len |> String.trim in
-            loop ((key, value) :: acc))
-    | exception End_of_file -> List.rev acc
-  in
-  loop []
-
-let read_packet (reader : Buf_read.t) : Jsonrpc.Packet.t option =
+let rec read_packet (reader : Buf_read.t) : Jsonrpc.Packet.t option =
   try
-    let headers = read_headers reader in
-    match List.assoc_opt "Content-Length" headers with
-    | None -> None (* No Content-Length header *)
-    | Some len_str -> (
-        match int_of_string_opt len_str with
-        | None -> failwith "Invalid Content-Length value"
-        | Some len ->
-            let content = Buf_read.take len reader in
-            let yojson = Yojson.Safe.from_string content in
-            let json = yojson_to_json yojson in
-            Some (Jsonrpc.Packet.t_of_yojson json))
+    (* Read a single line of JSON *)
+    let line = Buf_read.line reader in
+    (* Remove trailing \r if present (in case of \r\n line endings) *)
+    let line =
+      if String.length line > 0 && line.[String.length line - 1] = '\r' then
+        String.sub line 0 (String.length line - 1)
+      else line
+    in
+    (* Skip empty lines *)
+    if String.length line = 0 then read_packet reader
+    else
+      let yojson = Yojson.Safe.from_string line in
+      let json = yojson_to_json yojson in
+      Some (Jsonrpc.Packet.t_of_yojson json)
   with
   | End_of_file -> None
   | exn ->
