@@ -1,7 +1,31 @@
-open Mcp_sdk
 open Eio
 
-type args = { file_path : string; content : string } [@@deriving yojson]
+module Args = struct
+  type t = { file_path : string; content : string } [@@deriving yojson]
+
+  let schema () =
+    `Assoc
+      [
+        ("type", `String "object");
+        ( "properties",
+          `Assoc
+            [
+              ( "file_path",
+                `Assoc
+                  [
+                    ("type", `String "string");
+                    ("description", `String "The path to the file to write");
+                  ] );
+              ( "content",
+                `Assoc
+                  [
+                    ("type", `String "string");
+                    ("description", `String "The content to write to the file");
+                  ] );
+            ] );
+        ("required", `List [ `String "file_path"; `String "content" ]);
+      ]
+end
 
 let name = "fs_write"
 
@@ -9,14 +33,14 @@ let description =
   "Write content to a file. For OCaml files (.ml/.mli), automatically formats \
    the code and returns diagnostics."
 
-let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
-  let { file_path; content } = args in
-  let fs = Stdenv.fs env in
+let execute context args =
+  let { Args.file_path; content } = args in
+  let fs = Stdenv.fs context.Context.env in
 
   (* Resolve relative paths against project root *)
   let file_path =
     if Filename.is_relative file_path then
-      Filename.concat project_root file_path
+      Filename.concat context.Context.project_root file_path
     else file_path
   in
 
@@ -37,8 +61,8 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
     if is_ocaml_file then
       (* Try to format with ocamlformat *)
       match
-        Ocamlformat_client.format_doc ocamlformat_client ~path:file_path
-          ~content
+        Ocamlformat_client.format_doc context.Context.ocamlformat
+          ~path:file_path ~content
       with
       | Ok formatted_content ->
           (formatted_content, Some (Ok "Code formatted successfully"))
@@ -55,7 +79,7 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
     if is_ocaml_file then
       (* Get diagnostics from Merlin after writing *)
       match
-        Merlin_client.diagnostics merlin_client ~source_path:file_path
+        Merlin_client.diagnostics context.Context.merlin ~source_path:file_path
           ~source_text:final_content
       with
       | Ok diagnostics ->
@@ -127,7 +151,7 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
                 format_status
           in
 
-          Ok (Tool_result.structured ~text:text_description result_json)
+          Ok (Mcp_sdk.Tool_result.structured ~text:text_description result_json)
       | Error err ->
           (* If Merlin fails, still report success but include the error *)
           let result_json =
@@ -144,54 +168,26 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
               ]
           in
           Ok
-            (Tool_result.structured
+            (Mcp_sdk.Tool_result.structured
                ~text:
                  (Printf.sprintf "Wrote %s (Merlin error: %s)" file_path err)
                result_json)
     else
       (* For non-OCaml files *)
       Ok
-        (Tool_result.text (Printf.sprintf "Successfully wrote to %s" file_path))
+        (Mcp_sdk.Tool_result.text
+           (Printf.sprintf "Successfully wrote to %s" file_path))
   with
   | Sys_error err ->
-      Ok (Tool_result.error (Printf.sprintf "Error writing file: %s" err))
+      Ok
+        (Mcp_sdk.Tool_result.error
+           (Printf.sprintf "Error writing file: %s" err))
   | exn ->
       Ok
-        (Tool_result.error
+        (Mcp_sdk.Tool_result.error
            (Printf.sprintf "Unexpected error: %s" (Printexc.to_string exn)))
 
-let register server ~sw ~env ~merlin_client ~ocamlformat_client ~project_root =
-  Server.tool server name ~description
-    ~args:
-      (module struct
-        type t = args
-
-        let to_yojson = args_to_yojson
-        let of_yojson = args_of_yojson
-
-        let schema () =
-          `Assoc
-            [
-              ("type", `String "object");
-              ( "properties",
-                `Assoc
-                  [
-                    ( "file_path",
-                      `Assoc
-                        [
-                          ("type", `String "string");
-                          ( "description",
-                            `String "The path to the file to write" );
-                        ] );
-                    ( "content",
-                      `Assoc
-                        [
-                          ("type", `String "string");
-                          ( "description",
-                            `String "The content to write to the file" );
-                        ] );
-                  ] );
-              ("required", `List [ `String "file_path"; `String "content" ]);
-            ]
-      end)
-    (handle sw env merlin_client ocamlformat_client project_root)
+let register server context =
+  Mcp_sdk.Server.tool server name ~description
+    ~args:(module Args)
+    (fun args _ctx -> execute context args)

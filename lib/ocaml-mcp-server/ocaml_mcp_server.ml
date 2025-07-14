@@ -1,7 +1,6 @@
 (** OCaml MCP Server implementation using the SDK *)
 
 open Eio
-open Mcp_sdk
 
 (* Setup logging *)
 let src = Logs.Src.create "ocaml-mcp-server" ~doc:"OCaml MCP Server logging"
@@ -56,10 +55,10 @@ let create_server ~sw ~env ~config =
   in
 
   (* Initialize merlin client *)
-  let merlin_client = Merlin_client.create ~project_root in
+  let merlin = Merlin_client.create ~project_root in
 
   (* Initialize ocamlformat client *)
-  let ocamlformat_client = Ocamlformat_client.create () in
+  let ocamlformat = Ocamlformat_client.create () in
 
   (* Initialize dune RPC if enabled *)
   let dune_rpc =
@@ -76,52 +75,55 @@ let create_server ~sw ~env ~config =
       None)
   in
 
+  (* Create unified context *)
+  let context =
+    Context.create ~sw ~env ~project_root ~merlin ~ocamlformat ~dune_rpc
+  in
+
   (* Create SDK server with pagination support *)
   let mcp_logging_config =
-    Server.
+    Mcp_sdk.Server.
       {
         enabled = config.enable_mcp_logging;
         initial_level = config.mcp_log_level;
       }
   in
   let server =
-    Server.create
+    Mcp_sdk.Server.create
       ~server_info:{ name = "ocaml-mcp-server"; version = "0.1.0" }
       ~pagination_config:{ page_size = 10 }
         (* Demonstrate pagination with 10 items per page *)
       ~mcp_logging_config ()
   in
 
-  (* Register tools *)
+  (* Register tools with unified context *)
   (* Dune tools *)
-  Tool_build_status.register server ~dune_rpc;
-  Tool_build_target.register server ~sw ~env ~project_root ~dune_rpc;
-  Tool_run_tests.register server ~dune_rpc;
+  Tool_build_status.register server context;
+  Tool_build_target.register server context;
+  Tool_run_tests.register server context;
 
   (* OCaml analysis tools *)
-  Tool_module_signature.register server ~sw ~env ~project_root;
-  Tool_find_definition.register server ~sw ~env ~merlin_client;
-  Tool_find_references.register server ~sw ~env ~merlin_client;
-  Tool_type_at_pos.register server ~sw ~env ~merlin_client;
-  Tool_project_structure.register server ~sw ~env ~project_root;
-  Tool_eval.register server ~sw ~env ~project_root;
+  Tool_module_signature.register server context;
+  Tool_find_definition.register server context;
+  Tool_find_references.register server context;
+  Tool_type_at_pos.register server context;
+  Tool_project_structure.register server context;
+  Tool_eval.register server context;
 
   (* File system tools with OCaml superpowers *)
-  Tool_fs_read.register server ~sw ~env ~merlin_client ~project_root;
-  Tool_fs_write.register server ~sw ~env ~merlin_client ~ocamlformat_client
-    ~project_root;
-  Tool_fs_edit.register server ~sw ~env ~merlin_client ~ocamlformat_client
-    ~project_root;
+  Tool_fs_read.register server context;
+  Tool_fs_write.register server context;
+  Tool_fs_edit.register server context;
 
   server
 
 let run ~sw ~env ~connection ~config =
   Log.info (fun m -> m "Starting OCaml MCP Server");
   let server = create_server ~sw ~env ~config in
-  let mcp_server = Server.to_mcp_server server in
+  let mcp_server = Mcp_sdk.Server.to_mcp_server server in
 
   (* Set up MCP logging using SDK functionality *)
-  Server.setup_mcp_logging server mcp_server;
+  Mcp_sdk.Server.setup_mcp_logging server mcp_server;
 
   Mcp_eio.Connection.serve ~sw connection mcp_server
 

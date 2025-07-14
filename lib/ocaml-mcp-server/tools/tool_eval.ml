@@ -1,35 +1,47 @@
 (** OCaml REPL evaluation tool using subprocess *)
 
-open Mcp_sdk
 open Eio
 
-type args = { code : string } [@@deriving yojson]
+module Args = struct
+  type t = { code : string } [@@deriving yojson]
+
+  let schema () =
+    `Assoc
+      [
+        ("type", `String "object");
+        ( "properties",
+          `Assoc [ ("code", `Assoc [ ("type", `String "string") ]) ] );
+        ("required", `List [ `String "code" ]);
+      ]
+end
 
 let name = "ocaml_eval"
 let description = "Evaluate OCaml expressions in project context"
 
 (* Get initialization directives from dune *)
-let get_dune_directives env project_root =
-  let fs = Stdenv.fs env in
-  let dune_project = Filename.concat project_root "dune-project" in
+let get_dune_directives context =
+  let fs = Stdenv.fs context.Context.env in
+  let dune_project =
+    Filename.concat context.Context.project_root "dune-project"
+  in
 
   (* Check if this is a dune project *)
   match Path.kind ~follow:true Path.(fs / dune_project) with
   | `Regular_file | `Directory -> (
       try
-        let process_mgr = Stdenv.process_mgr env in
+        let process_mgr = Stdenv.process_mgr context.Context.env in
         let output_buf = Buffer.create 1024 in
 
         (* Run dune top with timeout *)
         let output_result =
           Fiber.first
             (fun () ->
-              let clock = Stdenv.mono_clock env in
+              let clock = Stdenv.mono_clock context.Context.env in
               Time.Mono.sleep clock 5.0;
               Error `Timeout)
             (fun () ->
               try
-                let cwd = Eio.Path.(fs / project_root) in
+                let cwd = Eio.Path.(fs / context.Context.project_root) in
                 Process.run process_mgr [ "dune"; "top"; "." ] ~cwd
                   ~stdout:(Flow.buffer_sink output_buf);
                 Ok (Buffer.contents output_buf)
@@ -52,12 +64,12 @@ let get_dune_directives env project_root =
   | _ -> []
 
 (* Evaluate code using ocaml *)
-let evaluate_code env project_root code =
-  let process_mgr = Stdenv.process_mgr env in
-  let fs = Stdenv.fs env in
+let evaluate_code context code =
+  let process_mgr = Stdenv.process_mgr context.Context.env in
+  let fs = Stdenv.fs context.Context.env in
 
   (* Get directives *)
-  let directives = get_dune_directives env project_root in
+  let directives = get_dune_directives context in
 
   (* Ensure code ends with ;; *)
   let code =
@@ -89,7 +101,7 @@ let evaluate_code env project_root code =
 
   try
     (* Run ocaml *)
-    let cwd = Eio.Path.(fs / project_root) in
+    let cwd = Eio.Path.(fs / context.Context.project_root) in
     Process.run process_mgr [ "ocaml"; "-noprompt" ] ~cwd
       ~stdin:(Flow.string_source (Buffer.contents input))
       ~stdout:(Flow.buffer_sink output_buf)
@@ -121,8 +133,8 @@ let evaluate_code env project_root code =
       String.concat "\n" filtered |> String.trim
     in
 
-    if String.length stderr > 0 then Ok (Tool_result.error stderr)
-    else Ok (Tool_result.text (clean_output stdout))
+    if String.length stderr > 0 then Ok (Mcp_sdk.Tool_result.error stderr)
+    else Ok (Mcp_sdk.Tool_result.text (clean_output stdout))
   with
   | Eio.Exn.Io (Eio.Process.E _, _) ->
       let error_msg = Buffer.contents error_buf in
@@ -132,28 +144,15 @@ let evaluate_code env project_root code =
         else if String.length output_msg > 0 then output_msg
         else "Evaluation failed"
       in
-      Ok (Tool_result.error full_msg)
+      Ok (Mcp_sdk.Tool_result.error full_msg)
   | exn ->
-      Ok (Tool_result.error ("Unexpected error: " ^ Printexc.to_string exn))
+      Ok
+        (Mcp_sdk.Tool_result.error
+           ("Unexpected error: " ^ Printexc.to_string exn))
 
-let handle env project_root args _ctx = evaluate_code env project_root args.code
+let execute context args = evaluate_code context args.Args.code
 
-let register server ~sw:_ ~env ~project_root =
-  Server.tool server name ~description
-    ~args:
-      (module struct
-        type t = args
-
-        let to_yojson = args_to_yojson
-        let of_yojson = args_of_yojson
-
-        let schema () =
-          `Assoc
-            [
-              ("type", `String "object");
-              ( "properties",
-                `Assoc [ ("code", `Assoc [ ("type", `String "string") ]) ] );
-              ("required", `List [ `String "code" ]);
-            ]
-      end)
-    (handle env project_root)
+let register server context =
+  Mcp_sdk.Server.tool server name ~description
+    ~args:(module Args)
+    (fun args _ctx -> execute context args)

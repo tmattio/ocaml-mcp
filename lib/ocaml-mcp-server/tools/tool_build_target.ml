@@ -1,21 +1,40 @@
 (** Dune build target tool *)
 
-open Mcp_sdk
 open Eio
 
-type args = { targets : string list } [@@deriving yojson]
+module Args = struct
+  type t = { targets : string list } [@@deriving yojson]
+
+  let schema () =
+    `Assoc
+      [
+        ("type", `String "object");
+        ( "properties",
+          `Assoc
+            [
+              ( "targets",
+                `Assoc
+                  [
+                    ("type", `String "array");
+                    ("items", `Assoc [ ("type", `String "string") ]);
+                  ] );
+            ] );
+        ("required", `List [ `String "targets" ]);
+      ]
+end
 
 let name = "dune_build_target"
 let description = "Build specific files/libraries/tests"
 
-let handle _sw env project_root _dune_rpc args _ctx =
+let execute context args =
   let output_lines = ref [] in
   let add_line line = output_lines := line :: !output_lines in
 
   add_line
-    (Printf.sprintf "Building targets: %s" (String.concat " " args.targets));
+    (Printf.sprintf "Building targets: %s"
+       (String.concat " " args.Args.targets));
 
-  let process_mgr = Stdenv.process_mgr env in
+  let process_mgr = Stdenv.process_mgr context.Context.env in
 
   (* Run dune build using Eio.Process *)
   let stdout_buf = Buffer.create 1024 in
@@ -24,9 +43,11 @@ let handle _sw env project_root _dune_rpc args _ctx =
   let build_succeeded =
     try
       (* Change to project directory for the command *)
-      let cwd = Eio.Path.(Stdenv.fs env / project_root) in
+      let cwd =
+        Eio.Path.(Stdenv.fs context.Context.env / context.Context.project_root)
+      in
       Process.run process_mgr
-        ("dune" :: "build" :: args.targets)
+        ("dune" :: "build" :: args.Args.targets)
         ~cwd
         ~stdout:(Flow.buffer_sink stdout_buf)
         ~stderr:(Flow.buffer_sink stderr_buf);
@@ -61,36 +82,13 @@ let handle _sw env project_root _dune_rpc args _ctx =
         !output_lines
     in
     if not has_success then add_line "Success";
-    Ok (Tool_result.text (String.concat "\n" (List.rev !output_lines))))
+    Ok (Mcp_sdk.Tool_result.text (String.concat "\n" (List.rev !output_lines))))
   else (
     (* Don't add "Build failed" if we already have error output from dune *)
     if List.length !output_lines = 1 then add_line "Build failed";
-    Ok (Tool_result.error (String.concat "\n" (List.rev !output_lines))))
+    Ok (Mcp_sdk.Tool_result.error (String.concat "\n" (List.rev !output_lines))))
 
-let register server ~sw ~env ~project_root ~dune_rpc =
-  Server.tool server name ~description
-    ~args:
-      (module struct
-        type t = args
-
-        let to_yojson = args_to_yojson
-        let of_yojson = args_of_yojson
-
-        let schema () =
-          `Assoc
-            [
-              ("type", `String "object");
-              ( "properties",
-                `Assoc
-                  [
-                    ( "targets",
-                      `Assoc
-                        [
-                          ("type", `String "array");
-                          ("items", `Assoc [ ("type", `String "string") ]);
-                        ] );
-                  ] );
-              ("required", `List [ `String "targets" ]);
-            ]
-      end)
-    (handle sw env project_root dune_rpc)
+let register server context =
+  Mcp_sdk.Server.tool server name ~description
+    ~args:(module Args)
+    (fun args _ctx -> execute context args)

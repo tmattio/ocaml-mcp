@@ -1,10 +1,19 @@
 (** Project structure tool *)
 
-open Mcp_sdk
 open Eio
 
 (* Tool argument types *)
-type args = unit [@@deriving yojson]
+module Args = struct
+  type t = unit [@@deriving yojson]
+
+  let schema () =
+    `Assoc
+      [
+        ("type", `String "object");
+        ("properties", `Assoc []);
+        ("required", `List []);
+      ]
+end
 
 let name = "ocaml_project_structure"
 let description = "Return project layout, libraries, executables"
@@ -295,18 +304,19 @@ let format_component ~project_root:_ comp =
   in
   String.concat "\n" lines
 
-let handle _sw env project_root _args _ctx =
+let execute context _args =
   Log.info (fun m ->
-      m "project-structure tool called with project_root: %s" project_root);
+      m "project-structure tool called with project_root: %s"
+        context.Context.project_root);
   Log.debug (fun m -> m "Running dune describe workspace");
 
-  let process_mgr = Stdenv.process_mgr env in
-  let fs = Stdenv.fs env in
+  let process_mgr = Stdenv.process_mgr context.Context.env in
+  let fs = Stdenv.fs context.Context.env in
 
   (* Run dune describe using Eio.Process *)
   try
     let output_buf = Buffer.create 1024 in
-    let cwd = Eio.Path.(fs / project_root) in
+    let cwd = Eio.Path.(fs / context.Context.project_root) in
     Process.run process_mgr
       [ "dune"; "describe"; "workspace"; "--format=csexp" ]
       ~cwd
@@ -321,10 +331,12 @@ let handle _sw env project_root _args _ctx =
           Printf.sprintf "Project Root: %s\nBuild Context: default\n" root
         in
         let formatted_components =
-          List.map (format_component ~project_root) components
+          List.map
+            (format_component ~project_root:context.Context.project_root)
+            components
           |> String.concat "\n\n"
         in
-        Ok (Tool_result.text (header ^ "\n" ^ formatted_components))
+        Ok (Mcp_sdk.Tool_result.text (header ^ "\n" ^ formatted_components))
     | Error msg ->
         Log.err (fun m -> m "Failed to parse dune describe output: %s" msg);
         Error msg
@@ -339,8 +351,10 @@ let handle _sw env project_root _args _ctx =
     Log.err (fun m -> m "%s" msg);
     Error msg
 
-let register server ~sw ~env ~project_root =
+let register server context =
   Log.debug (fun m ->
-      m "Registering project-structure tool with project_root: %s" project_root);
-  Server.tool server name ~description (fun () _ctx ->
-      handle sw env project_root () _ctx)
+      m "Registering project-structure tool with project_root: %s"
+        context.Context.project_root);
+  Mcp_sdk.Server.tool server name ~description
+    ~args:(module Args)
+    (fun args _ctx -> execute context args)

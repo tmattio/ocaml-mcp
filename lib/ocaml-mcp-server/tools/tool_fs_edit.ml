@@ -1,14 +1,64 @@
-open Mcp_sdk
 open Eio
 
-type args = {
-  file_path : string;
-  old_string : string;
-  new_string : string;
-  expected_replacements : int option; [@default None]
-  replace_all : bool option; [@default None]
-}
-[@@deriving yojson]
+module Args = struct
+  type t = {
+    file_path : string;
+    old_string : string;
+    new_string : string;
+    expected_replacements : int option; [@default None]
+    replace_all : bool option; [@default None]
+  }
+  [@@deriving yojson]
+
+  let schema () =
+    `Assoc
+      [
+        ("type", `String "object");
+        ( "properties",
+          `Assoc
+            [
+              ( "file_path",
+                `Assoc
+                  [
+                    ("type", `String "string");
+                    ("description", `String "The path to the file to edit");
+                  ] );
+              ( "old_string",
+                `Assoc
+                  [
+                    ("type", `String "string");
+                    ("description", `String "The exact text to replace");
+                  ] );
+              ( "new_string",
+                `Assoc
+                  [
+                    ("type", `String "string");
+                    ("description", `String "The text to replace it with");
+                  ] );
+              ( "expected_replacements",
+                `Assoc
+                  [
+                    ("type", `String "integer");
+                    ( "description",
+                      `String "Number of replacements expected (defaults to 1)"
+                    );
+                  ] );
+              ( "replace_all",
+                `Assoc
+                  [
+                    ("type", `String "boolean");
+                    ( "description",
+                      `String
+                        "Replace all occurrences of the string (overrides \
+                         expected_replacements)" );
+                  ] );
+            ] );
+        ( "required",
+          `List
+            [ `String "file_path"; `String "old_string"; `String "new_string" ]
+        );
+      ]
+end
 
 let name = "fs_edit"
 
@@ -44,20 +94,25 @@ let replace_all_occurrences text old_string new_string =
   in
   replace "" 0
 
-let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
-  let { file_path; old_string; new_string; expected_replacements; replace_all }
-      =
+let execute context args =
+  let {
+    Args.file_path;
+    old_string;
+    new_string;
+    expected_replacements;
+    replace_all;
+  } =
     args
   in
 
   (* Resolve relative paths against project root *)
   let file_path =
     if Filename.is_relative file_path then
-      Filename.concat project_root file_path
+      Filename.concat context.Context.project_root file_path
     else file_path
   in
 
-  let fs = Stdenv.fs env in
+  let fs = Stdenv.fs context.Context.env in
 
   try
     (* Read current file content *)
@@ -77,14 +132,14 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
 
     if occurrences = 0 then
       Ok
-        (Tool_result.error
+        (Mcp_sdk.Tool_result.error
            (Printf.sprintf
               "Failed to edit: could not find the string to replace in %s"
               file_path))
     else if (not check_expected) && replace_all <> Some true then
       let expected = Option.value expected_replacements ~default:1 in
       Ok
-        (Tool_result.error
+        (Mcp_sdk.Tool_result.error
            (Printf.sprintf
               "Failed to edit: expected %d replacements but found %d in %s"
               expected occurrences file_path))
@@ -102,8 +157,8 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
         if is_ocaml_file then
           (* Try to format with ocamlformat *)
           match
-            Ocamlformat_client.format_doc ocamlformat_client ~path:file_path
-              ~content:new_content
+            Ocamlformat_client.format_doc context.Context.ocamlformat
+              ~path:file_path ~content:new_content
           with
           | Ok formatted_content ->
               (formatted_content, Some (Ok "Code formatted successfully"))
@@ -119,8 +174,8 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
       if is_ocaml_file then
         (* Get diagnostics from Merlin after writing *)
         match
-          Merlin_client.diagnostics merlin_client ~source_path:file_path
-            ~source_text:final_content
+          Merlin_client.diagnostics context.Context.merlin
+            ~source_path:file_path ~source_text:final_content
         with
         | Ok diagnostics ->
             (* Format diagnostics *)
@@ -193,7 +248,8 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
                   file_path occurrences format_status
             in
 
-            Ok (Tool_result.structured ~text:text_description result_json)
+            Ok
+              (Mcp_sdk.Tool_result.structured ~text:text_description result_json)
         | Error err ->
             (* If Merlin fails, still report success but include the error *)
             let result_json =
@@ -211,7 +267,7 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
                 ]
             in
             Ok
-              (Tool_result.structured
+              (Mcp_sdk.Tool_result.structured
                  ~text:
                    (Printf.sprintf
                       "Edited %s (%d replacements, Merlin error: %s)" file_path
@@ -220,7 +276,7 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
       else
         (* For non-OCaml files *)
         Ok
-          (Tool_result.text
+          (Mcp_sdk.Tool_result.text
              (Printf.sprintf "Successfully modified %s (%d replacements)"
                 file_path occurrences))
   with
@@ -233,72 +289,13 @@ let handle _sw env merlin_client ocamlformat_client project_root args _ctx =
             Printf.sprintf "I/O error: %s" (Printexc.to_string exn)
         | _ -> Printf.sprintf "Unexpected error: %s" (Printexc.to_string exn)
       in
-      Ok (Tool_result.error msg)
+      Ok (Mcp_sdk.Tool_result.error msg)
   | exn ->
       Ok
-        (Tool_result.error
+        (Mcp_sdk.Tool_result.error
            (Printf.sprintf "Unexpected error: %s" (Printexc.to_string exn)))
 
-let register server ~sw ~env ~merlin_client ~ocamlformat_client ~project_root =
-  Server.tool server name ~description
-    ~args:
-      (module struct
-        type t = args
-
-        let to_yojson = args_to_yojson
-        let of_yojson = args_of_yojson
-
-        let schema () =
-          `Assoc
-            [
-              ("type", `String "object");
-              ( "properties",
-                `Assoc
-                  [
-                    ( "file_path",
-                      `Assoc
-                        [
-                          ("type", `String "string");
-                          ("description", `String "The path to the file to edit");
-                        ] );
-                    ( "old_string",
-                      `Assoc
-                        [
-                          ("type", `String "string");
-                          ("description", `String "The exact text to replace");
-                        ] );
-                    ( "new_string",
-                      `Assoc
-                        [
-                          ("type", `String "string");
-                          ("description", `String "The text to replace it with");
-                        ] );
-                    ( "expected_replacements",
-                      `Assoc
-                        [
-                          ("type", `String "integer");
-                          ( "description",
-                            `String
-                              "Number of replacements expected (defaults to 1)"
-                          );
-                        ] );
-                    ( "replace_all",
-                      `Assoc
-                        [
-                          ("type", `String "boolean");
-                          ( "description",
-                            `String
-                              "Replace all occurrences of the string \
-                               (overrides expected_replacements)" );
-                        ] );
-                  ] );
-              ( "required",
-                `List
-                  [
-                    `String "file_path";
-                    `String "old_string";
-                    `String "new_string";
-                  ] );
-            ]
-      end)
-    (handle sw env merlin_client ocamlformat_client project_root)
+let register server context =
+  Mcp_sdk.Server.tool server name ~description
+    ~args:(module Args)
+    (fun args _ctx -> execute context args)

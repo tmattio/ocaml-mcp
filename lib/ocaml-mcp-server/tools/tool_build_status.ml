@@ -1,20 +1,37 @@
 (** Dune build status tool *)
 
-open Mcp_sdk
-
 (* Tool argument types *)
-type args = { targets : string list option [@default None] } [@@deriving yojson]
+module Args = struct
+  type t = { targets : string list option [@default None] } [@@deriving yojson]
+
+  let schema () =
+    `Assoc
+      [
+        ("type", `String "object");
+        ( "properties",
+          `Assoc
+            [
+              ( "targets",
+                `Assoc
+                  [
+                    ("type", `String "array");
+                    ("items", `Assoc [ ("type", `String "string") ]);
+                  ] );
+            ] );
+        ("required", `List []);
+      ]
+end
 
 let name = "dune_build_status"
 
 let description =
   "Get the current build status from dune, including any errors or warnings"
 
-let handle dune_rpc _args _ctx =
-  match dune_rpc with
+let execute context _args =
+  match context.Context.dune_rpc with
   | None ->
       Ok
-        (Tool_result.error
+        (Mcp_sdk.Tool_result.error
            "Dune RPC not connected. Please run this command from a dune \
             project.")
   | Some dune ->
@@ -48,32 +65,9 @@ let handle dune_rpc _args _ctx =
       in
 
       let full_text = String.concat "\n" (status_text :: diagnostic_texts) in
-      Ok (Tool_result.text full_text)
+      Ok (Mcp_sdk.Tool_result.text full_text)
 
-let register server ~dune_rpc =
-  Server.tool server name ~description
-    ~args:
-      (module struct
-        type t = args
-
-        let to_yojson = args_to_yojson
-        let of_yojson = args_of_yojson
-
-        let schema () =
-          `Assoc
-            [
-              ("type", `String "object");
-              ( "properties",
-                `Assoc
-                  [
-                    ( "targets",
-                      `Assoc
-                        [
-                          ("type", `String "array");
-                          ("items", `Assoc [ ("type", `String "string") ]);
-                        ] );
-                  ] );
-              ("required", `List []);
-            ]
-      end)
-    (handle dune_rpc)
+let register server context =
+  Mcp_sdk.Server.tool server name ~description
+    ~args:(module Args)
+    (fun args _ctx -> execute context args)
