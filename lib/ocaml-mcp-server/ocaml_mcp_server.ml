@@ -54,30 +54,12 @@ let create_server ~sw ~env ~config =
             | None -> "."))
   in
 
-  (* Initialize merlin client *)
-  let merlin = Merlin_client.create ~project_root in
-
-  (* Initialize ocamlformat client *)
-  let ocamlformat = Ocamlformat_client.create () in
-
-  (* Initialize dune RPC if enabled *)
-  let dune_rpc =
-    if config.enable_dune && Sys.getenv_opt "OCAML_MCP_NO_DUNE" = None then (
-      Log.debug (fun m -> m "Initializing Dune RPC client");
-      let client = Dune_rpc_client.create ~sw ~env ~root:project_root in
-      (* Start polling in background *)
-      Fiber.fork ~sw (fun () ->
-          Log.debug (fun m -> m "Starting Dune RPC polling loop");
-          Dune_rpc_client.run client);
-      Some client)
-    else (
-      Log.debug (fun m -> m "Dune RPC disabled");
-      None)
-  in
-
-  (* Create unified context *)
-  let context =
-    Context.create ~sw ~env ~project_root ~merlin ~ocamlformat ~dune_rpc
+  (* Create ocaml-platform-sdk instance *)
+  let sdk =
+    Ocaml_platform_sdk.create ~sw ~env ~project_root
+      ~enable_dune:
+        (config.enable_dune && Sys.getenv_opt "OCAML_MCP_NO_DUNE" = None)
+      ()
   in
 
   (* Create SDK server with pagination support *)
@@ -96,24 +78,8 @@ let create_server ~sw ~env ~config =
       ~mcp_logging_config ()
   in
 
-  (* Register tools with unified context *)
-  (* Dune tools *)
-  Tool_build_status.register server context;
-  Tool_build_target.register server context;
-  Tool_run_tests.register server context;
-
-  (* OCaml analysis tools *)
-  Tool_module_signature.register server context;
-  Tool_find_definition.register server context;
-  Tool_find_references.register server context;
-  Tool_type_at_pos.register server context;
-  Tool_project_structure.register server context;
-  Tool_eval.register server context;
-
-  (* File system tools with OCaml superpowers *)
-  Tool_fs_read.register server context;
-  Tool_fs_write.register server context;
-  Tool_fs_edit.register server context;
+  (* Register all tools using the adapter *)
+  Tool_adapter.register_all server sw env sdk;
 
   server
 

@@ -42,18 +42,4 @@
  (synopsis "MCP server providing tools for OCaml development")
  (description
   "An MCP (Model Context Protocol) server that provides tools for OCaml development, including integration with dune build system.")
- (depends
-  ocaml
-  mcp
-  mcp-eio
-  eio_main
-  csexp
-  yojson
-  dune-rpc
-  jsonschema
-  re
-  cmdliner
-  (merlin-lib (>= 5.5))
-  ocamlformat-lib
-  (ppx_deriving_yojson
-   (>= 3.9.0))))
+ (depends ocaml mcp mcp-eio eio_main ocaml-platform-sdk cmdliner))

@@ -3,23 +3,6 @@
 (library
  (public_name ocaml-mcp-server)
  (name ocaml_mcp_server)
- (libraries
-  mcp
-  mcp-eio
-  mcp.sdk
-  eio
-  eio.unix
-  csexp
-  yojson
-  dune-rpc
-  unix
-  logs
-  logs.fmt
-  merlin-lib.kernel
-  merlin-lib.query_protocol
-  merlin-lib.query_commands
-  merlin-lib.analysis
-  compiler-libs.common
-  ocamlformat-lib)
+ (libraries mcp mcp-eio mcp.sdk eio eio.unix ocaml-platform-sdk.actions)
  (preprocess
   (pps ppx_deriving_yojson)))

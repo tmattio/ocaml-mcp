@@ -15,15 +15,8 @@ depends: [
   "mcp"
   "mcp-eio"
   "eio_main"
-  "csexp"
-  "yojson"
-  "dune-rpc"
-  "jsonschema"
-  "re"
+  "ocaml-platform-sdk"
   "cmdliner"
-  "merlin-lib" {>= "5.5"}
-  "ocamlformat-lib"
-  "ppx_deriving_yojson" {>= "3.9.0"}
   "odoc" {with-doc}
 ]
 build: [
