@@ -7,7 +7,6 @@ maintainer: ["Maintainer Name <maintainer@example.com>"]
 authors: ["Author Name <author@example.com>"]
 license: "LICENSE"
 homepage: "https://github.com/username/reponame"
-doc: "https://url/to/documentation"
 bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "dune" {>= "3.19"}

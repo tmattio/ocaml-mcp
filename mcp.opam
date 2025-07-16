@@ -8,7 +8,6 @@ authors: ["Author Name <author@example.com>"]
 license: "LICENSE"
 tags: ["mcp" "protocol" "rpc"]
 homepage: "https://github.com/username/reponame"
-doc: "https://url/to/documentation"
 bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "dune" {>= "3.19"}

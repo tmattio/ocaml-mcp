@@ -3,6 +3,14 @@
 (library
  (public_name ocaml-mcp-server)
  (name ocaml_mcp_server)
- (libraries mcp mcp-eio mcp.sdk eio eio.unix ocaml-platform-sdk.actions)
+ (libraries
+  mcp
+  mcp-eio
+  mcp.sdk
+  eio
+  eio.unix
+  ocaml-platform-sdk
+  ocaml-platform-sdk.actions
+  logs)
  (preprocess
   (pps ppx_deriving_yojson)))

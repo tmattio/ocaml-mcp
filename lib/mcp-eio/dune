@@ -1,5 +1,16 @@
 (library
  (name mcp_eio)
  (public_name mcp-eio)
- (libraries mcp eio jsonrpc http cohttp-eio logs logs.fmt)
+ (libraries
+  mcp
+  eio
+  jsonrpc
+  http
+  cohttp
+  cohttp-eio
+  logs
+  logs.fmt
+  yojson
+  uri
+  cstruct)
  (modules_without_implementation transport))

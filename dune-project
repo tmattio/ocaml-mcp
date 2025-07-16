@@ -13,7 +13,7 @@
 
 (license LICENSE)
 
-(documentation https://url/to/documentation)
+(implicit_transitive_deps false)
 
 (package
  (name mcp)
