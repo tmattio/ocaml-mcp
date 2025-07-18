@@ -10,6 +10,7 @@ let setup_logging style_renderer level =
   (* Setup Logs reporter *)
   Fmt_tty.setup_std_outputs ?style_renderer ();
   Logs.set_reporter (Logs_fmt.reporter ());
+  Logs_threaded.enable ();
   Logs.set_level level
 
 let handle_client ~sw ~env ~config connection =

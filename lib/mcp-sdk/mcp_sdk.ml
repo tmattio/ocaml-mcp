@@ -799,6 +799,7 @@ module Server = struct
         Logging.add_mcp_notifier ~send_notification current_reporter
       in
       Logs.set_reporter combined_reporter;
+      Logs_threaded.enable ();
 
       Log.info (fun m -> m "MCP logging enabled"))
 end

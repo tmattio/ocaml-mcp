@@ -1,6 +1,6 @@
 (library
  (name mcp_sdk)
  (public_name mcp.sdk)
- (libraries mcp re jsonschema unix logs logs.fmt base64)
+ (libraries mcp re jsonschema unix logs logs.threaded base64)
  (preprocess
   (pps ppx_deriving_yojson)))

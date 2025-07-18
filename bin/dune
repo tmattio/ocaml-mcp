@@ -19,6 +19,7 @@
   eio_main
   logs
   logs.fmt
+  logs.threaded
   fmt
   fmt.tty
   fmt.cli
