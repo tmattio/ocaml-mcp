@@ -6,8 +6,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Server ready, waiting for connections...
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -18,8 +16,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -30,8 +26,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -42,8 +36,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -54,8 +46,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -66,8 +56,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -81,42 +69,27 @@ Start the MCP server in the background
 
 Test evaluating a simple expression:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"1 + 1"}'
-  Enter #help;; for help.
-  - : int = 2
+  Process error: Failure("execve: No such file or directory")
 
 Test evaluating a let binding:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"let x = 42"}'
-  Enter #help;; for help.
-  val x : int = 42
+  Process error: Failure("execve: No such file or directory")
 
 Test evaluating an expression using the previous binding:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"x * 2"}'
-  Enter #help;; for help.
-  Line 1, characters 0-1:
-  1 | x * 2;;
-      ^
-  Error: Unbound value x
+  Process error: Failure("execve: No such file or directory")
 
 Test evaluating a function definition:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"let double x = x * 2"}'
-  Enter #help;; for help.
-  val double : int -> int = <fun>
+  Process error: Failure("execve: No such file or directory")
 
 Test calling the function:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"double 21"}'
-  Enter #help;; for help.
-  Line 1, characters 0-6:
-  1 | double 21;;
-      ^^^^^^
-  Error: Unbound value double
+  Process error: Failure("execve: No such file or directory")
 
 Test evaluating invalid code:
   $ mcp --pipe test.sock call ocaml_eval -a '{"code":"let x ="}'
-  Enter #help;; for help.
-  Line 1, characters 7-9:
-  1 | let x =;;
-             ^^
-  Error: Syntax error
+  Process error: Failure("execve: No such file or directory")
 
 Kill the server
   $ kill $SERVER_PID 2>/dev/null

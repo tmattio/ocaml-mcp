@@ -24,9 +24,6 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [INFO] Server ready, waiting for connections...
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
-  ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -39,7 +36,7 @@ Start dune RPC and MCP server:
   $ sleep 1
 
   $ mcp --pipe test.sock call dune_build_status
-  Build waiting...
+  {"status":"waiting","diagnostics":[]}
 
 Clean up:
 

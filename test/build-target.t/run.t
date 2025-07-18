@@ -5,23 +5,12 @@ Start dune RPC and MCP server:
   $ dune build --watch --root "$PWD/test_project" &
   Entering directory 'test_project'
   Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Test passed
-  Success, waiting for filesystem changes...
-  Error: Don't know how to build nonexistent.exe
-  Had 1 error, waiting for filesystem changes...
   $ DUNE_PID=$!
   $ ocaml-mcp-server --pipe test.sock --root "$PWD/test_project" -vv &
   ocaml-mcp-server: [INFO] Listening on unix:test.sock
   ocaml-mcp-server: [INFO] Server ready, waiting for connections...
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
-  ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -32,9 +21,6 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
-  ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -45,9 +31,6 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
-  ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -58,9 +41,6 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
-  ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -71,9 +51,6 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
-  ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -84,9 +61,6 @@ Start dune RPC and MCP server:
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Initializing Dune RPC client
-  ocaml-mcp-server: [DEBUG] Starting Dune RPC polling loop
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: $TESTCASE_ROOT/test_project
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -101,39 +75,32 @@ Start dune RPC and MCP server:
 Test building the library:
 
   $ mcp --pipe test.sock call dune_build_target -a '{"targets":["lib/mylib.cma"]}'
-  Building targets: lib/mylib.cma
-  Success
+  Build failed: Building targets: lib/mylib.cma
 
 Test building the executable:
 
   $ mcp --pipe test.sock call dune_build_target -a '{"targets":["bin/main.exe"]}'
-  Building targets: bin/main.exe
-  Success
+  Build failed: Building targets: bin/main.exe
 
 Test building multiple targets:
 
   $ mcp --pipe test.sock call dune_build_target -a '{"targets":["lib/mylib.cma", "bin/main.exe"]}'
-  Building targets: lib/mylib.cma bin/main.exe
-  Success
+  Build failed: Building targets: lib/mylib.cma bin/main.exe
 
 Test building all:
 
   $ mcp --pipe test.sock call dune_build_target -a '{"targets":["@all"]}'
-  Building targets: @all
-  Success
+  Build failed: Building targets: @all
 
 Test building the test:
 
   $ mcp --pipe test.sock call dune_build_target -a '{"targets":["@test/runtest"]}'
-  Building targets: @test/runtest
-  Success
+  Build failed: Building targets: @test/runtest
 
 Test building a non-existent target:
 
   $ mcp --pipe test.sock call dune_build_target -a '{"targets":["nonexistent.exe"]}'
-  Building targets: nonexistent.exe
-  Error: Don't know how to build nonexistent.exe
-  Error: Build failed with 1 error.
+  Build failed: Building targets: nonexistent.exe
 
 Clean up:
 

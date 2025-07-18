@@ -10,8 +10,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Server ready, waiting for connections...
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -22,8 +20,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -34,8 +30,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -46,8 +40,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -58,8 +50,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -70,8 +60,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -82,8 +70,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -94,8 +80,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -106,8 +90,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -118,8 +100,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -130,8 +110,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -142,8 +120,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -154,8 +130,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -166,8 +140,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -178,8 +150,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -190,8 +160,6 @@ Start the MCP server in the background
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
   ocaml-mcp-server: [INFO] Starting OCaml MCP Server
-  ocaml-mcp-server: [DEBUG] Dune RPC disabled
-  ocaml-mcp-server: [DEBUG] Registering project-structure tool with project_root: .
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -205,7 +173,7 @@ Start the MCP server in the background
 
 Basic fs_write - Create a simple OCaml file:
   $ mcp --pipe test.sock call fs_write -a '{"file_path":"hello.ml","content":"let greeting = \"Hello, world!\"\nlet () = print_endline greeting"}'
-  Wrote ./hello.ml (formatted, no diagnostics)
+  {"path":"hello.ml","formatted":true,"diagnostics":[]}
 
 Verify the file was created:
   $ cat hello.ml
@@ -214,11 +182,11 @@ Verify the file was created:
 
 Basic fs_read - Read the file back:
   $ mcp --pipe test.sock call fs_read -a '{"file_path":"hello.ml"}'
-  Read ./hello.ml (no diagnostics)
+  {"content":"let greeting = \"Hello, world!\"\nlet () = print_endline greeting\n","diagnostics":[],"merlin_error":null}
 
 Basic fs_edit - Modify the greeting:
   $ mcp --pipe test.sock call fs_edit -a '{"file_path":"hello.ml","old_string":"\"Hello, world!\"","new_string":"\"Hello, OCaml!\""}'
-  Edited ./hello.ml (1 replacements, formatted, no diagnostics)
+  {"replacements_made":1,"diagnostics":[],"formatted":true}
 
 Verify the edit:
   $ cat hello.ml
@@ -231,24 +199,22 @@ Test automatic formatting with fs_write:
 
 Test fs_write with modules:
   $ mcp --pipe test.sock call fs_write -a '{"file_path":"module.ml","content":"module M = struct\n  let value = 42\nend"}'
-  Wrote ./module.ml (formatted, no diagnostics)
+  {"path":"module.ml","formatted":true,"diagnostics":[]}
 
 Test different OCaml file extensions (.mli):
   $ mcp --pipe test.sock call fs_write -a '{"file_path":"interface.mli","content":"val compute : int -> int"}'
-  Wrote ./interface.mli (formatted, 1 diagnostics)
+  {"path":"interface.mli","formatted":true,"diagnostics":[{"message":"Value declarations are only allowed in signatures","severity":"error","start_line":1,"start_col":0,"end_line":1,"end_col":24}]}
 
   $ mcp --pipe test.sock call fs_read -a '{"file_path":"interface.mli"}' 2>&1 | grep "file_type"
   [1]
 
 Test fs_write with a non-OCaml file:
   $ mcp --pipe test.sock call fs_write -a '{"file_path":"README.md","content":"# Test Project\n\nThis is a test."}'
-  Successfully wrote to ./README.md
+  {"path":"README.md","formatted":false,"diagnostics":null}
 
 Test fs_read on non-OCaml file:
   $ mcp --pipe test.sock call fs_read -a '{"file_path":"README.md"}'
-  # Test Project
-  
-  This is a test.
+  {"content":"# Test Project\n\nThis is a test.","diagnostics":null,"merlin_error":null}
 
 Test fs_edit with non-existent file:
   $ mcp --pipe test.sock call fs_edit -a '{"file_path":"nonexistent.ml","old_string":"foo","new_string":"bar"}' 2>&1 | grep -o "File not found"
@@ -264,10 +230,10 @@ Test fs_write with invalid OCaml code (should still write but report issues):
 
 Test fs_edit with replace_all option:
   $ mcp --pipe test.sock call fs_write -a '{"file_path":"multi.ml","content":"let x = 1\nlet y = 1\nlet z = 1"}'
-  Wrote ./multi.ml (formatted, no diagnostics)
+  {"path":"multi.ml","formatted":true,"diagnostics":[]}
 
   $ mcp --pipe test.sock call fs_edit -a '{"file_path":"multi.ml","old_string":"1","new_string":"42","replace_all":true}'
-  Edited ./multi.ml (3 replacements, formatted, no diagnostics)
+  {"replacements_made":3,"diagnostics":[],"formatted":true}
 
   $ cat multi.ml
   let x = 42
@@ -276,10 +242,10 @@ Test fs_edit with replace_all option:
 
 Test fs_edit preserving OCaml structure:
   $ mcp --pipe test.sock call fs_write -a '{"file_path":"func.ml","content":"let add x y = x + y\nlet multiply x y = x * y"}'
-  Wrote ./func.ml (formatted, no diagnostics)
+  {"path":"func.ml","formatted":true,"diagnostics":[]}
 
   $ mcp --pipe test.sock call fs_edit -a '{"file_path":"func.ml","old_string":"add","new_string":"sum"}'
-  Edited ./func.ml (1 replacements, formatted, no diagnostics)
+  {"replacements_made":1,"diagnostics":[],"formatted":true}
 
   $ cat func.ml
   let sum x y = x + y
