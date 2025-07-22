@@ -107,3 +107,18 @@ let run_stdio ~env ~config =
   in
   run ~sw ~env ~connection:conn ~config;
   Log.info (fun m -> m "Server run completed, exiting switch")
+
+module type S = Tool_adapter.S
+
+let build_status : (module S) = (module Build_status)
+let build_target : (module S) = (module Build_target)
+let eval : (module S) = (module Eval)
+let find_definition : (module S) = (module Find_definition)
+let find_references : (module S) = (module Find_references)
+let fs_edit : (module S) = (module Fs_edit)
+let fs_read : (module S) = (module Fs_read)
+let fs_write : (module S) = (module Fs_write)
+let module_signature : (module S) = (module Module_signature)
+let project_structure : (module S) = (module Project_structure)
+let run_tests : (module S) = (module Run_tests)
+let type_at_pos : (module S) = (module Type_at_pos)

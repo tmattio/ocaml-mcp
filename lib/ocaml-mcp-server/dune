@@ -10,7 +10,9 @@
   eio
   eio.unix
   ocaml-platform-sdk
-  ocaml-platform-sdk.actions
-  logs)
+  logs
+  csexp
+  merlin-lib.ocaml_parsing
+  merlin-lib.ocaml_utils)
  (preprocess
   (pps ppx_deriving_yojson)))

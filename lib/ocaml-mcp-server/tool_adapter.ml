@@ -1,13 +1,44 @@
 (** Adapter to register ocaml-platform-sdk tools with MCP SDK *)
 
+module type S = sig
+  val name : string
+  val description : string
+
+  module Args : sig
+    type t
+
+    val of_yojson : Yojson.Safe.t -> (t, string) Result.t
+    val to_yojson : t -> Yojson.Safe.t
+    val schema : unit -> Yojson.Safe.t
+  end
+
+  module Output : sig
+    type t
+
+    val to_yojson : t -> Yojson.Safe.t
+  end
+
+  module Error : sig
+    type t
+
+    val to_string : t -> string
+  end
+
+  val execute :
+    sw:Eio.Switch.t ->
+    env:Eio_unix.Stdenv.base ->
+    Ocaml_platform_sdk.t ->
+    Args.t ->
+    (Output.t, Error.t) Result.t
+end
+
 (** Convert Tool.S errors to MCP errors *)
-let error_to_string (type e)
-    (module T : Ocaml_platform_actions.S with type Error.t = e) error =
+let error_to_string (type e) (module T : S with type Error.t = e) error =
   T.Error.to_string error
 
 (** Register a Tool.S module with the MCP SDK server *)
 let register_tool (type args out err)
-    (module T : Ocaml_platform_actions.S
+    (module T : S
       with type Args.t = args
        and type Output.t = out
        and type Error.t = err) server sw env sdk =
@@ -41,7 +72,6 @@ let register_tool (type args out err)
 
 (** Register all ocaml-platform-sdk tools *)
 let register_all server sw env sdk =
-  let open Ocaml_platform_actions in
   (* Dune tools *)
   register_tool (module Build_status) server sw env sdk;
   register_tool (module Build_target) server sw env sdk;

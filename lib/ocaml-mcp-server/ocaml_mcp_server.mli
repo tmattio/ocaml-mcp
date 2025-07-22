@@ -37,3 +37,50 @@ val run :
   config:config ->
   unit
 (** [run ~sw ~env ~connection ~config] runs server on provided connection. *)
+
+(** {1 Tools} *)
+
+module type S = sig
+  val name : string
+  val description : string
+
+  module Args : sig
+    type t
+
+    val of_yojson : Yojson.Safe.t -> (t, string) Result.t
+    val to_yojson : t -> Yojson.Safe.t
+    val schema : unit -> Yojson.Safe.t
+  end
+
+  module Output : sig
+    type t
+
+    val to_yojson : t -> Yojson.Safe.t
+  end
+
+  module Error : sig
+    type t
+
+    val to_string : t -> string
+  end
+
+  val execute :
+    sw:Eio.Switch.t ->
+    env:Eio_unix.Stdenv.base ->
+    Ocaml_platform_sdk.t ->
+    Args.t ->
+    (Output.t, Error.t) Result.t
+end
+
+val build_status : (module S)
+val build_target : (module S)
+val eval : (module S)
+val find_definition : (module S)
+val find_references : (module S)
+val fs_edit : (module S)
+val fs_read : (module S)
+val fs_write : (module S)
+val module_signature : (module S)
+val project_structure : (module S)
+val run_tests : (module S)
+val type_at_pos : (module S)
