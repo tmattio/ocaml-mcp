@@ -19,6 +19,17 @@ let%test "label end with letter or digit" =
   List.for_all is_valid_label valid_ends
   && List.for_all (fun s -> not (is_valid_label s)) invalid_ends
 
+let mcp_reserved_prefix_re =
+  Re.compile
+    (Re.seq
+       [
+         Re.bos;
+         Re.alt [ Re.str "modelcontextprotocol"; Re.str "mcp" ];
+         Re.char '.';
+         Re.non_greedy (Re.rep Re.any);
+         Re.char '/';
+       ])
+
 let%test "label interior chars letter, dig, or hyphen" =
   let prefix = "valid" in
   let postfix = "end" in
