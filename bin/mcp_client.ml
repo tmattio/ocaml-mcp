@@ -145,45 +145,45 @@ let request t req =
   | Ok json -> json
   | Error _err -> failwith "Request failed: JSON-RPC error"
 
-let list_resources t ?cursor () =
-  let json = request t (ResourcesList { cursor }) in
+let list_resources t ?cursor ?meta () =
+  let json = request t (ResourcesList { cursor; meta }) in
   match Mcp.Request.Resources.List.result_of_yojson json with
   | Ok result -> result
   | Error msg ->
       failwith (Printf.sprintf "Failed to parse resources list: %s" msg)
 
-let read_resource t ~uri =
-  let json = request t (ResourcesRead { uri }) in
+let read_resource t ~uri ?meta () =
+  let json = request t (ResourcesRead { uri; meta }) in
   match Mcp.Request.Resources.Read.result_of_yojson json with
   | Ok result -> result
   | Error msg ->
       failwith (Printf.sprintf "Failed to parse resource read: %s" msg)
 
 let subscribe_resource t ~uri =
-  let _json = request t (ResourcesSubscribe { uri }) in
+  let _json = request t (ResourcesSubscribe { uri; meta = None }) in
   ()
 
 let unsubscribe_resource t ~uri =
-  let _json = request t (ResourcesUnsubscribe { uri }) in
+  let _json = request t (ResourcesUnsubscribe { uri; meta = None }) in
   ()
 
 let _ = (subscribe_resource, unsubscribe_resource)
 
-let list_tools t ?cursor () =
-  let json = request t (ToolsList { cursor; meta = None }) in
+let list_tools t ?cursor ?meta () =
+  let json = request t (ToolsList { cursor; meta }) in
   match Mcp.Request.Tools.List.result_of_yojson json with
   | Ok result -> result
   | Error msg -> failwith (Printf.sprintf "Failed to parse tools list: %s" msg)
 
-let call_tool t ~name ?arguments () =
-  let json = request t (ToolsCall { name; arguments; meta = None }) in
+let call_tool t ~name ?arguments ?meta () =
+  let json = request t (ToolsCall { name; arguments; meta }) in
   match Mcp.Request.Tools.Call.result_of_yojson json with
   | Ok result -> result
   | Error msg ->
       failwith (Printf.sprintf "Failed to parse tool call result: %s" msg)
 
-let list_prompts t ?cursor () =
-  let json = request t (PromptsList { cursor }) in
+let list_prompts t ?cursor ?meta () =
+  let json = request t (PromptsList { cursor; meta }) in
   match Mcp.Request.Prompts.List.result_of_yojson json with
   | Ok result -> result
   | Error msg ->
@@ -204,7 +204,7 @@ let get_prompt t ~name ?arguments () =
         | _ -> failwith "Prompt arguments must be an object")
       arguments
   in
-  let json = request t (PromptsGet { name; arguments }) in
+  let json = request t (PromptsGet { name; arguments; meta = None }) in
   match Mcp.Request.Prompts.Get.result_of_yojson json with
   | Ok result -> result
   | Error msg ->
@@ -293,25 +293,36 @@ let print_usage () =
   eprintf "  --pipe <path>       Connect to Unix socket\n";
   eprintf "  --stdio             Use stdin/stdout (default)\n";
   eprintf "  -a, --args <json>   Tool arguments as JSON\n";
+  eprintf "  -m, --meta <json>   Metadata as JSON\n";
   exit 1
 
 let parse_transport args =
-  let rec parse_opts opts transport =
+  let rec parse_opts opts transport meta =
     match opts with
-    | [] -> (transport, [])
+    | [] -> (transport, meta, [])
     | "--socket" :: port :: rest ->
-        parse_opts rest (Socket (int_of_string port))
-    | "--pipe" :: path :: rest -> parse_opts rest (Pipe path)
-    | "--stdio" :: rest -> parse_opts rest Stdio
-    | other -> (transport, other)
+        parse_opts rest (Socket (int_of_string port)) meta
+    | "--pipe" :: path :: rest -> parse_opts rest (Pipe path) meta
+    | "--stdio" :: rest -> parse_opts rest Stdio meta
+    | ("-m" | "--meta") :: json :: rest -> parse_opts rest transport (Some json)
+    | other -> (transport, meta, other)
   in
-  parse_opts args Stdio
+  parse_opts args Stdio None
 
-let list_cmd transport_config what =
+let list_cmd transport_config what meta_json =
+  let meta =
+    Option.map
+      (fun json_str ->
+        try Yojson.Safe.from_string json_str
+        with Yojson.Json_error msg ->
+          eprintf "Invalid meta JSON: %s\n" msg;
+          exit 1)
+      meta_json
+  in
   with_client ~transport_config (fun client ->
       match String.lowercase_ascii what with
       | "resources" ->
-          let result = list_resources client () in
+          let result = list_resources client ?meta () in
           printf "Resources (%d):\n" (List.length result.resources);
           List.iter
             (fun r ->
@@ -320,7 +331,7 @@ let list_cmd transport_config what =
                    ~default:r.Mcp.Types.Resource.name))
             result.resources
       | "tools" ->
-          let result = list_tools client () in
+          let result = list_tools client ?meta () in
           printf "Tools (%d):\n" (List.length result.tools);
           List.iter
             (fun t ->
@@ -329,7 +340,7 @@ let list_cmd transport_config what =
                    ~default:"No description"))
             result.tools
       | "prompts" ->
-          let result = list_prompts client () in
+          let result = list_prompts client ?meta () in
           printf "Prompts (%d):\n" (List.length result.prompts);
           List.iter
             (fun p ->
@@ -341,7 +352,16 @@ let list_cmd transport_config what =
           eprintf "Unknown list target: %s\n" what;
           exit 1)
 
-let call_cmd transport_config tool_name args_json =
+let call_cmd transport_config tool_name args_json meta_json =
+  let meta =
+    Option.map
+      (fun json_str ->
+        try Yojson.Safe.from_string json_str
+        with Yojson.Json_error msg ->
+          eprintf "Invalid meta JSON: %s\n" msg;
+          exit 1)
+      meta_json
+  in
   with_client ~transport_config (fun client ->
       let arguments =
         Option.map
@@ -353,15 +373,24 @@ let call_cmd transport_config tool_name args_json =
           args_json
       in
 
-      let result = call_tool client ~name:tool_name ?arguments () in
+      let result = call_tool client ~name:tool_name ?arguments ?meta () in
 
       List.iter
         (fun content -> printf "%s\n" (format_content content))
         result.content)
 
-let read_cmd transport_config uri =
+let read_cmd transport_config uri meta_json =
+  let meta =
+    Option.map
+      (fun json_str ->
+        try Yojson.Safe.from_string json_str
+        with Yojson.Json_error msg ->
+          eprintf "Invalid meta JSON: %s\n" msg;
+          exit 1)
+      meta_json
+  in
   with_client ~transport_config (fun client ->
-      let result = read_resource client ~uri in
+      let result = read_resource client ~uri ?meta () in
       printf "Resource contents:\n";
       List.iter
         (fun content ->
@@ -386,13 +415,13 @@ let info_cmd transport_config =
 
 let () =
   let args = List.tl (Array.to_list Sys.argv) in
-  let transport, remaining_args = parse_transport args in
+  let transport, meta_json, remaining_args = parse_transport args in
 
   (* Use stderr for output when using stdio transport *)
   (match transport with Stdio -> use_stderr () | _ -> ());
 
   match remaining_args with
-  | "list" :: what :: _ -> list_cmd transport what
+  | "list" :: what :: _ -> list_cmd transport what meta_json
   | "call" :: tool :: rest ->
       let args_json =
         let rec find_args = function
@@ -402,7 +431,7 @@ let () =
         in
         find_args rest
       in
-      call_cmd transport tool args_json
-  | "read" :: uri :: _ -> read_cmd transport uri
+      call_cmd transport tool args_json meta_json
+  | "read" :: uri :: _ -> read_cmd transport uri meta_json
   | "info" :: _ -> info_cmd transport
   | _ -> print_usage ()

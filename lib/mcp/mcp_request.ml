@@ -20,7 +20,10 @@ end
 
 module Resources = struct
   module List = struct
-    type params = { cursor : cursor option [@default None] }
+    type params = {
+      cursor : cursor option; [@default None]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
     [@@deriving yojson { strict = false }]
 
     type result = {
@@ -32,7 +35,11 @@ module Resources = struct
   end
 
   module Read = struct
-    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type params = {
+      uri : string;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
 
     type result = {
       contents : Content.resource_contents list;
@@ -42,12 +49,22 @@ module Resources = struct
   end
 
   module Subscribe = struct
-    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type params = {
+      uri : string;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
+
     type result = unit [@@deriving yojson { strict = false }]
   end
 
   module Unsubscribe = struct
-    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type params = {
+      uri : string;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
+
     type result = unit [@@deriving yojson { strict = false }]
   end
 
@@ -71,7 +88,10 @@ end
 
 module Prompts = struct
   module List = struct
-    type params = { cursor : cursor option [@default None] }
+    type params = {
+      cursor : cursor option; [@default None]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
     [@@deriving yojson { strict = false }]
 
     type result = {
@@ -86,6 +106,7 @@ module Prompts = struct
     type params = {
       name : string;
       arguments : (string * string) list option; [@default None]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
 
     let params_to_yojson params =
@@ -97,6 +118,11 @@ module Prompts = struct
             ( "arguments",
               `Assoc (Stdlib.List.map (fun (k, v) -> (k, `String v)) args) )
             :: fields
+      in
+      let fields =
+        match params.meta with
+        | None -> fields
+        | Some meta -> ("_meta", meta) :: fields
       in
       `Assoc fields
 
@@ -123,7 +149,8 @@ module Prompts = struct
                     | Error _ -> None)
                 | _ -> None
               in
-              Ok { name; arguments }
+              let meta = Stdlib.List.assoc_opt "_meta" fields in
+              Ok { name; arguments; meta }
           | _ -> Error "Invalid prompts/get params")
       | _ -> Error "prompts/get params must be an object"
 
@@ -203,15 +230,23 @@ module Elicitation = struct
     type params = {
       message : string;
       requested_schema : ElicitationSchema.t; [@key "requestedSchema"]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
 
     let params_to_yojson params =
-      `Assoc
+      let fields =
         [
           ("message", `String params.message);
           ( "requestedSchema",
             ElicitationSchema.to_yojson params.requested_schema );
         ]
+      in
+      let fields =
+        match params.meta with
+        | None -> fields
+        | Some meta -> ("_meta", meta) :: fields
+      in
+      `Assoc fields
 
     let params_of_yojson = function
       | `Assoc fields -> (
@@ -221,7 +256,9 @@ module Elicitation = struct
           with
           | Some (`String message), Some schema_json -> (
               match ElicitationSchema.of_yojson schema_json with
-              | Ok requested_schema -> Ok { message; requested_schema }
+              | Ok requested_schema ->
+                  let meta = Stdlib.List.assoc_opt "_meta" fields in
+                  Ok { message; requested_schema; meta }
               | Error e -> Error ("Invalid requestedSchema: " ^ e))
           | _ -> Error "Invalid elicitation params")
       | _ -> Error "Elicitation params must be an object"
@@ -278,6 +315,7 @@ module Completion = struct
     type params = {
       ref_ : CompletionReference.t; [@key "ref"]
       argument : CompletionArgument.t;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
     [@@deriving yojson { strict = false }]
 

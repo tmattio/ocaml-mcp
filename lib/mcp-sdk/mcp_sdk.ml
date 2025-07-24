@@ -11,11 +11,13 @@ module Context = struct
     req_id : Types.request_id;
     prog_token : Types.progress_token option;
     send_notif : Mcp.Notification.t -> unit;
+    meta : Yojson.Safe.t option;
   }
 
   let request_id t = t.req_id
   let progress_token t = t.prog_token
   let send_notification t notif = t.send_notif notif
+  let meta t = t.meta
 
   let report_progress t ~progress ?total () =
     match t.prog_token with
@@ -541,8 +543,8 @@ module Server = struct
   let to_mcp_server t =
     let send_notification_ref = ref (fun _ -> ()) in
 
-    let make_context req_id prog_token =
-      { Context.req_id; prog_token; send_notif = !send_notification_ref }
+    let make_context req_id prog_token meta =
+      { Context.req_id; prog_token; send_notif = !send_notification_ref; meta }
     in
 
     let handler =
@@ -590,7 +592,7 @@ module Server = struct
                 Log.err (fun m -> m "Unknown tool: %s" params.name);
                 Error ("Unknown tool: " ^ params.name)
             | Some h ->
-                let ctx = make_context (String "tool-call") None in
+                let ctx = make_context (String "tool-call") None params.meta in
                 let result = h.handler params.arguments ctx in
                 (match result with
                 | Ok _ ->
@@ -623,6 +625,7 @@ module Server = struct
                       | Some list_fn -> (
                           let ctx =
                             make_context (String "resource-list") None
+                              params.meta
                           in
                           match list_fn ctx with
                           | Ok result -> result.resources @ acc
@@ -676,6 +679,7 @@ module Server = struct
                       | StaticResource r when r.uri = uri ->
                           let ctx =
                             make_context (String "resource-read") None
+                              params.meta
                           in
                           Some (r.handler uri ctx)
                       | _ -> None))
@@ -694,6 +698,7 @@ module Server = struct
                           | Some vars ->
                               let ctx =
                                 make_context (String "resource-read") None
+                                  params.meta
                               in
                               Some (r.read_handler vars ctx)
                           | None -> None)
@@ -747,7 +752,7 @@ module Server = struct
             match Hashtbl.find_opt t.prompts params.name with
             | None -> Error ("Unknown prompt: " ^ params.name)
             | Some h ->
-                let ctx = make_context (String "prompt-get") None in
+                let ctx = make_context (String "prompt-get") None params.meta in
                 let json_args =
                   match params.arguments with
                   | None -> None
@@ -761,14 +766,18 @@ module Server = struct
             match t.subscription_handler with
             | None -> Error "Resource subscriptions not supported"
             | Some handler ->
-                let ctx = make_context (String "resource-subscribe") None in
+                let ctx =
+                  make_context (String "resource-subscribe") None params.meta
+                in
                 handler.on_subscribe params.uri ctx);
         on_resources_unsubscribe =
           (fun params ->
             match t.subscription_handler with
             | None -> Error "Resource subscriptions not supported"
             | Some handler ->
-                let ctx = make_context (String "resource-unsubscribe") None in
+                let ctx =
+                  make_context (String "resource-unsubscribe") None params.meta
+                in
                 handler.on_unsubscribe params.uri ctx);
         on_logging_set_level =
           (fun params ->
@@ -844,10 +853,8 @@ module Client = struct
       | Ok result -> callback (Ok result)
       | Error e -> callback (Error e))
 
-  let tools_list t callback =
-    let params : Mcp.Request.Tools.List.params =
-      { cursor = None; meta = None }
-    in
+  let tools_list t ?meta callback =
+    let params : Mcp.Request.Tools.List.params = { cursor = None; meta } in
     let request : Mcp.Request.t = Mcp.Request.ToolsList params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (
@@ -856,9 +863,9 @@ module Client = struct
           | Error e -> callback (Error e))
       | Error e -> callback (Error e.message))
 
-  let tools_call t ~name ~args ~args_to_yojson callback =
+  let tools_call t ~name ~args ~args_to_yojson ?meta callback =
     let params : Mcp.Request.Tools.Call.params =
-      { name; arguments = Some (args_to_yojson args); meta = None }
+      { name; arguments = Some (args_to_yojson args); meta }
     in
     let request : Mcp.Request.t = Mcp.Request.ToolsCall params in
     Mcp.Client.send_request (get_mcp_client t) request (function
@@ -868,8 +875,8 @@ module Client = struct
           | Error e -> callback (Error e))
       | Error e -> callback (Error e.message))
 
-  let resources_list t callback =
-    let params = { Mcp.Request.Resources.List.cursor = None } in
+  let resources_list t ?meta callback =
+    let params = { Mcp.Request.Resources.List.cursor = None; meta } in
     let request : Mcp.Request.t = Mcp.Request.ResourcesList params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (
@@ -878,8 +885,8 @@ module Client = struct
           | Error e -> callback (Error e))
       | Error e -> callback (Error e.message))
 
-  let resources_read t ~uri callback =
-    let params = { Mcp.Request.Resources.Read.uri } in
+  let resources_read t ~uri ?meta callback =
+    let params = { Mcp.Request.Resources.Read.uri; meta } in
     let request : Mcp.Request.t = Mcp.Request.ResourcesRead params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (
@@ -888,8 +895,8 @@ module Client = struct
           | Error e -> callback (Error e))
       | Error e -> callback (Error e.message))
 
-  let prompts_list t callback =
-    let params = { Mcp.Request.Prompts.List.cursor = None } in
+  let prompts_list t ?meta callback =
+    let params = { Mcp.Request.Prompts.List.cursor = None; meta } in
     let request : Mcp.Request.t = Mcp.Request.PromptsList params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (
@@ -898,7 +905,7 @@ module Client = struct
           | Error e -> callback (Error e))
       | Error e -> callback (Error e.message))
 
-  let prompts_get t ~name ~args ~args_to_yojson callback =
+  let prompts_get t ~name ~args ~args_to_yojson ?meta callback =
     let args_json = args_to_yojson args in
     let arguments =
       match args_json with
@@ -912,7 +919,7 @@ module Client = struct
                fields)
       | _ -> None
     in
-    let params = { Mcp.Request.Prompts.Get.name; arguments } in
+    let params = { Mcp.Request.Prompts.Get.name; arguments; meta } in
     let request : Mcp.Request.t = Mcp.Request.PromptsGet params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (

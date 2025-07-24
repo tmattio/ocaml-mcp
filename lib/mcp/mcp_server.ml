@@ -2,6 +2,7 @@ open Mcp_types
 open Mcp_protocol
 module Request = Mcp_request
 module Notification = Mcp_notification
+module Meta = Mcp_meta
 
 type handler = {
   on_initialize :
@@ -74,108 +75,152 @@ let create ~handler ~notification_handler ~server_info ~server_capabilities =
 
 let handle_request (server : t) (id : Jsonrpc.Id.t) (request : Request.t) :
     outgoing_message =
-  match request with
-  | Request.Initialize params ->
-      if server.initialized then
-        error_to_outgoing ~id ~code:ErrorCode.invalid_request
-          ~message:"Server already initialized" ()
-      else (
-        server.client_capabilities <- Some params.capabilities;
-        let result =
-          {
-            Request.Initialize.protocol_version = params.protocol_version;
-            capabilities = server.server_capabilities;
-            server_info = server.server_info;
-            instructions = None;
-            meta = None;
-          }
-        in
-        match server.handler.on_initialize params with
-        | Ok _ ->
-            server.initialized <- true;
-            response_to_outgoing ~id (Request.Initialize result)
-        | Error msg ->
-            error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.ResourcesList params -> (
-      match server.handler.on_resources_list params with
-      | Ok result -> response_to_outgoing ~id (Request.ResourcesList result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.ResourcesRead params -> (
-      match server.handler.on_resources_read params with
-      | Ok result -> response_to_outgoing ~id (Request.ResourcesRead result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.ResourcesSubscribe params -> (
-      match server.handler.on_resources_subscribe params with
-      | Ok result ->
-          response_to_outgoing ~id (Request.ResourcesSubscribe result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.ResourcesUnsubscribe params -> (
-      match server.handler.on_resources_unsubscribe params with
-      | Ok result ->
-          response_to_outgoing ~id (Request.ResourcesUnsubscribe result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.ResourcesTemplatesList params -> (
-      match server.handler.on_resources_templates_list params with
-      | Ok result ->
-          response_to_outgoing ~id (Request.ResourcesTemplatesList result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.PromptsList params -> (
-      match server.handler.on_prompts_list params with
-      | Ok result -> response_to_outgoing ~id (Request.PromptsList result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.PromptsGet params -> (
-      match server.handler.on_prompts_get params with
-      | Ok result -> response_to_outgoing ~id (Request.PromptsGet result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.ToolsList params -> (
-      match server.handler.on_tools_list params with
-      | Ok result -> response_to_outgoing ~id (Request.ToolsList result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.ToolsCall params -> (
-      match server.handler.on_tools_call params with
-      | Ok result -> response_to_outgoing ~id (Request.ToolsCall result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.SamplingCreateMessage params -> (
-      match server.handler.on_sampling_create_message params with
-      | Ok result ->
-          response_to_outgoing ~id (Request.SamplingCreateMessage result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.ElicitationCreate params -> (
-      match server.handler.on_elicitation_create params with
-      | Ok result -> response_to_outgoing ~id (Request.ElicitationCreate result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.LoggingSetLevel params -> (
-      match server.handler.on_logging_set_level params with
-      | Ok result -> response_to_outgoing ~id (Request.LoggingSetLevel result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.CompletionComplete params -> (
-      match server.handler.on_completion_complete params with
-      | Ok result ->
-          response_to_outgoing ~id (Request.CompletionComplete result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.RootsList params -> (
-      match server.handler.on_roots_list params with
-      | Ok result -> response_to_outgoing ~id (Request.RootsList result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.Ping params -> (
-      match server.handler.on_ping params with
-      | Ok result -> response_to_outgoing ~id (Request.Ping result)
-      | Error msg ->
-          error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
+  (* Extract and validate the meta field from the request *)
+  let meta_to_validate =
+    match request with
+    | Request.Initialize _ -> None (* Initialize has no meta in params *)
+    | Request.ResourcesList params -> params.meta
+    | Request.ResourcesRead params -> params.meta
+    | Request.ResourcesSubscribe params -> params.meta
+    | Request.ResourcesUnsubscribe params -> params.meta
+    | Request.ResourcesTemplatesList params -> params.meta
+    | Request.PromptsList params -> params.meta
+    | Request.PromptsGet params -> params.meta
+    | Request.ToolsList params -> params.meta
+    | Request.ToolsCall params -> params.meta
+    | Request.SamplingCreateMessage params -> params.metadata
+    | Request.ElicitationCreate params -> params.meta
+    | Request.LoggingSetLevel params -> params.meta
+    | Request.CompletionComplete params -> params.meta
+    | Request.RootsList params -> params.meta
+    | Request.Ping params -> params.meta
+  in
+  match Meta.validate meta_to_validate with
+  | Error msg ->
+      error_to_outgoing ~id ~code:ErrorCode.invalid_params
+        ~message:("Invalid _meta: " ^ msg) ()
+  | Ok () -> (
+      (* Proceed with normal request handling *)
+      match request with
+      | Request.Initialize params ->
+          if server.initialized then
+            error_to_outgoing ~id ~code:ErrorCode.invalid_request
+              ~message:"Server already initialized" ()
+          else (
+            server.client_capabilities <- Some params.capabilities;
+            let result =
+              {
+                Request.Initialize.protocol_version = params.protocol_version;
+                capabilities = server.server_capabilities;
+                server_info = server.server_info;
+                instructions = None;
+                meta = None;
+              }
+            in
+            match server.handler.on_initialize params with
+            | Ok _ ->
+                server.initialized <- true;
+                response_to_outgoing ~id (Request.Initialize result)
+            | Error msg ->
+                error_to_outgoing ~id ~code:ErrorCode.internal_error
+                  ~message:msg ())
+      | Request.ResourcesList params -> (
+          match server.handler.on_resources_list params with
+          | Ok result -> response_to_outgoing ~id (Request.ResourcesList result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.ResourcesRead params -> (
+          match server.handler.on_resources_read params with
+          | Ok result -> response_to_outgoing ~id (Request.ResourcesRead result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.ResourcesSubscribe params -> (
+          match server.handler.on_resources_subscribe params with
+          | Ok result ->
+              response_to_outgoing ~id (Request.ResourcesSubscribe result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.ResourcesUnsubscribe params -> (
+          match server.handler.on_resources_unsubscribe params with
+          | Ok result ->
+              response_to_outgoing ~id (Request.ResourcesUnsubscribe result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.ResourcesTemplatesList params -> (
+          match server.handler.on_resources_templates_list params with
+          | Ok result ->
+              response_to_outgoing ~id (Request.ResourcesTemplatesList result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.PromptsList params -> (
+          match server.handler.on_prompts_list params with
+          | Ok result -> response_to_outgoing ~id (Request.PromptsList result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.PromptsGet params -> (
+          match server.handler.on_prompts_get params with
+          | Ok result -> response_to_outgoing ~id (Request.PromptsGet result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.ToolsList params -> (
+          match server.handler.on_tools_list params with
+          | Ok result -> response_to_outgoing ~id (Request.ToolsList result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.ToolsCall params -> (
+          match server.handler.on_tools_call params with
+          | Ok result -> response_to_outgoing ~id (Request.ToolsCall result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.SamplingCreateMessage params -> (
+          match server.handler.on_sampling_create_message params with
+          | Ok result ->
+              response_to_outgoing ~id (Request.SamplingCreateMessage result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.ElicitationCreate params -> (
+          match server.handler.on_elicitation_create params with
+          | Ok result ->
+              response_to_outgoing ~id (Request.ElicitationCreate result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.LoggingSetLevel params -> (
+          match server.handler.on_logging_set_level params with
+          | Ok result ->
+              response_to_outgoing ~id (Request.LoggingSetLevel result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.CompletionComplete params -> (
+          match server.handler.on_completion_complete params with
+          | Ok result ->
+              response_to_outgoing ~id (Request.CompletionComplete result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.RootsList params -> (
+          match server.handler.on_roots_list params with
+          | Ok result -> response_to_outgoing ~id (Request.RootsList result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ())
+      | Request.Ping params -> (
+          match server.handler.on_ping params with
+          | Ok result -> response_to_outgoing ~id (Request.Ping result)
+          | Error msg ->
+              error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg
+                ()))
 
 let handle_notification (server : t) (notification : Notification.t) : unit =
   match notification with
@@ -219,20 +264,67 @@ let get_client_capabilities (server : t) : Capabilities.client option =
 let default_handler : handler =
   {
     on_initialize = (fun _ -> Error "Not implemented");
-    on_resources_list = (fun _ -> Error "Not implemented");
-    on_resources_read = (fun _ -> Error "Not implemented");
-    on_resources_subscribe = (fun _ -> Error "Not implemented");
-    on_resources_unsubscribe = (fun _ -> Error "Not implemented");
-    on_resources_templates_list = (fun _ -> Error "Not implemented");
-    on_prompts_list = (fun _ -> Error "Not implemented");
-    on_prompts_get = (fun _ -> Error "Not implemented");
-    on_tools_list = (fun _ -> Error "Not implemented");
-    on_tools_call = (fun _ -> Error "Not implemented");
+    on_resources_list =
+      (fun params ->
+        (* Echo the metadata back in the response *)
+        Ok
+          {
+            Request.Resources.List.resources = [];
+            next_cursor = None;
+            meta = params.meta;
+          });
+    on_resources_read =
+      (fun params ->
+        Ok { Request.Resources.Read.contents = []; meta = params.meta });
+    on_resources_subscribe = (fun _ -> Ok ());
+    on_resources_unsubscribe = (fun _ -> Ok ());
+    on_resources_templates_list =
+      (fun params ->
+        Ok
+          {
+            Request.Resources.Templates.List.resource_templates = [];
+            next_cursor = None;
+            meta = params.meta;
+          });
+    on_prompts_list =
+      (fun params ->
+        Ok
+          {
+            Request.Prompts.List.prompts = [];
+            next_cursor = None;
+            meta = params.meta;
+          });
+    on_prompts_get =
+      (fun params ->
+        Ok
+          {
+            Request.Prompts.Get.description = None;
+            messages = [];
+            meta = params.meta;
+          });
+    on_tools_list =
+      (fun params ->
+        Ok
+          {
+            Request.Tools.List.tools = [];
+            next_cursor = None;
+            meta = params.meta;
+          });
+    on_tools_call =
+      (fun params ->
+        Ok
+          {
+            Request.Tools.Call.content = [];
+            is_error = None;
+            structured_content = None;
+            meta = params.meta;
+          });
     on_sampling_create_message = (fun _ -> Error "Not implemented");
     on_elicitation_create = (fun _ -> Error "Not implemented");
-    on_logging_set_level = (fun _ -> Error "Not implemented");
+    on_logging_set_level = (fun params -> Ok { meta = params.meta });
     on_completion_complete = (fun _ -> Error "Not implemented");
-    on_roots_list = (fun _ -> Error "Not implemented");
+    on_roots_list =
+      (fun params -> Ok { Request.Roots.List.roots = []; meta = params.meta });
     on_ping = (fun _ -> Ok ());
   }
 

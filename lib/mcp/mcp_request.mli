@@ -30,7 +30,10 @@ end
 (** Resource discovery and reading. *)
 module Resources : sig
   module List : sig
-    type params = { cursor : cursor option }
+    type params = {
+      cursor : cursor option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
     [@@deriving yojson { strict = false }]
 
     type result = {
@@ -42,7 +45,11 @@ module Resources : sig
   end
 
   module Read : sig
-    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type params = {
+      uri : string;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
 
     type result = {
       contents : Content.resource_contents list;
@@ -52,12 +59,22 @@ module Resources : sig
   end
 
   module Subscribe : sig
-    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type params = {
+      uri : string;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
+
     type result = unit [@@deriving yojson { strict = false }]
   end
 
   module Unsubscribe : sig
-    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type params = {
+      uri : string;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
+
     type result = unit [@@deriving yojson { strict = false }]
   end
 
@@ -82,7 +99,10 @@ end
 (** Prompt template management. *)
 module Prompts : sig
   module List : sig
-    type params = { cursor : cursor option }
+    type params = {
+      cursor : cursor option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
     [@@deriving yojson { strict = false }]
 
     type result = {
@@ -94,7 +114,11 @@ module Prompts : sig
   end
 
   module Get : sig
-    type params = { name : string; arguments : (string * string) list option }
+    type params = {
+      name : string;
+      arguments : (string * string) list option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
 
     val params_to_yojson : params -> Yojson.Safe.t
     val params_of_yojson : Yojson.Safe.t -> (params, string) Stdlib.result
@@ -172,7 +196,11 @@ end
 (** User input elicitation. *)
 module Elicitation : sig
   module Create : sig
-    type params = { message : string; requested_schema : ElicitationSchema.t }
+    type params = {
+      message : string;
+      requested_schema : ElicitationSchema.t;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
 
     val params_to_yojson : params -> Yojson.Safe.t
     val params_of_yojson : Yojson.Safe.t -> (params, string) Stdlib.result
@@ -207,6 +235,7 @@ module Completion : sig
     type params = {
       ref_ : CompletionReference.t;
       argument : CompletionArgument.t;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
     [@@deriving yojson { strict = false }]
 

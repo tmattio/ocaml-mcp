@@ -92,6 +92,7 @@ val get_server_info : t -> ServerInfo.t option
 val resources_list :
   t ->
   ?cursor:cursor ->
+  ?meta:Yojson.Safe.t ->
   ((Mcp_request.Resources.List.result, string) result -> unit) ->
   outgoing_message
 (** [resources_list t ?cursor callback] lists available resources.
@@ -101,6 +102,7 @@ val resources_list :
 val resources_read :
   t ->
   uri:string ->
+  ?meta:Yojson.Safe.t ->
   ((Mcp_request.Resources.Read.result, string) result -> unit) ->
   outgoing_message
 (** [resources_read t ~uri callback] reads resource contents. *)
@@ -108,6 +110,7 @@ val resources_read :
 val prompts_list :
   t ->
   ?cursor:cursor ->
+  ?meta:Yojson.Safe.t ->
   ((Mcp_request.Prompts.List.result, string) result -> unit) ->
   outgoing_message
 (** [prompts_list t ?cursor callback] lists available prompts.
@@ -118,6 +121,7 @@ val prompts_get :
   t ->
   name:string ->
   ?arguments:(string * string) list ->
+  ?meta:Yojson.Safe.t ->
   ((Mcp_request.Prompts.Get.result, string) result -> unit) ->
   outgoing_message
 (** [prompts_get t ~name ?arguments callback] retrieves prompt with arguments.
@@ -126,6 +130,7 @@ val prompts_get :
 val tools_list :
   t ->
   ?cursor:cursor ->
+  ?meta:Yojson.Safe.t ->
   ((Mcp_request.Tools.List.result, string) result -> unit) ->
   outgoing_message
 (** [tools_list t ?cursor callback] lists available tools.
@@ -136,6 +141,7 @@ val tools_call :
   t ->
   name:string ->
   ?arguments:Yojson.Safe.t ->
+  ?meta:Yojson.Safe.t ->
   ((Mcp_request.Tools.Call.result, string) result -> unit) ->
   outgoing_message
 (** [tools_call t ~name ?arguments callback] invokes tool with arguments. *)

@@ -43,6 +43,9 @@ module Context : sig
       [progress] parameter indicates the current progress value, and [total]
       optionally indicates the total amount of work. If no progress token is
       available, this function does nothing. *)
+
+  val meta : t -> Yojson.Safe.t option
+  (** [meta t] returns the metadata object from the request, if provided. *)
 end
 
 (** Helper functions for creating tool results *)
@@ -256,6 +259,7 @@ module Client : sig
 
   val tools_list :
     t ->
+    ?meta:Yojson.Safe.t ->
     ((Mcp.Request.Tools.List.result, string) result -> unit) ->
     outgoing_message
   (** [tools_list t callback] prepares a request to list available tools. *)
@@ -265,6 +269,7 @@ module Client : sig
     name:string ->
     args:'args ->
     args_to_yojson:('args -> Yojson.Safe.t) ->
+    ?meta:Yojson.Safe.t ->
     ((Mcp.Request.Tools.Call.result, string) result -> unit) ->
     outgoing_message
   (** [tools_call t ~name ~args ~args_to_yojson callback] prepares a request to
@@ -273,6 +278,7 @@ module Client : sig
 
   val resources_list :
     t ->
+    ?meta:Yojson.Safe.t ->
     ((Mcp.Request.Resources.List.result, string) result -> unit) ->
     outgoing_message
   (** [resources_list t callback] prepares a request to list resources. *)
@@ -280,12 +286,14 @@ module Client : sig
   val resources_read :
     t ->
     uri:string ->
+    ?meta:Yojson.Safe.t ->
     ((Mcp.Request.Resources.Read.result, string) result -> unit) ->
     outgoing_message
   (** [resources_read t ~uri callback] prepares a request to read a resource. *)
 
   val prompts_list :
     t ->
+    ?meta:Yojson.Safe.t ->
     ((Mcp.Request.Prompts.List.result, string) result -> unit) ->
     outgoing_message
   (** [prompts_list t callback] prepares a request to list prompts. *)
@@ -295,6 +303,7 @@ module Client : sig
     name:string ->
     args:'args ->
     args_to_yojson:('args -> Yojson.Safe.t) ->
+    ?meta:Yojson.Safe.t ->
     ((Mcp.Request.Prompts.Get.result, string) result -> unit) ->
     outgoing_message
   (** [prompts_get t ~name ~args ~args_to_yojson callback] prepares a request to

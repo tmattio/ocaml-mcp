@@ -174,10 +174,10 @@ let get_server_info (client : t) : ServerInfo.t option = client.server_info
 
 (* Convenience functions for making requests *)
 
-let resources_list (client : t) ?cursor
+let resources_list (client : t) ?cursor ?meta
     (callback : (Request.Resources.List.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Resources.List.cursor } in
+  let params = { Request.Resources.List.cursor; meta } in
   send_request client (Request.ResourcesList params) (fun response ->
       match response with
       | Ok json -> (
@@ -186,10 +186,10 @@ let resources_list (client : t) ?cursor
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let resources_read (client : t) ~uri
+let resources_read (client : t) ~uri ?meta
     (callback : (Request.Resources.Read.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Resources.Read.uri } in
+  let params = { Request.Resources.Read.uri; meta } in
   send_request client (Request.ResourcesRead params) (fun response ->
       match response with
       | Ok json -> (
@@ -198,10 +198,10 @@ let resources_read (client : t) ~uri
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let prompts_list (client : t) ?cursor
+let prompts_list (client : t) ?cursor ?meta
     (callback : (Request.Prompts.List.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Prompts.List.cursor } in
+  let params = { Request.Prompts.List.cursor; meta } in
   send_request client (Request.PromptsList params) (fun response ->
       match response with
       | Ok json -> (
@@ -210,10 +210,10 @@ let prompts_list (client : t) ?cursor
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let prompts_get (client : t) ~name ?arguments
+let prompts_get (client : t) ~name ?arguments ?meta
     (callback : (Request.Prompts.Get.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Prompts.Get.name; arguments } in
+  let params = { Request.Prompts.Get.name; arguments; meta } in
   send_request client (Request.PromptsGet params) (fun response ->
       match response with
       | Ok json -> (
@@ -222,10 +222,10 @@ let prompts_get (client : t) ~name ?arguments
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let tools_list (client : t) ?cursor
+let tools_list (client : t) ?cursor ?meta
     (callback : (Request.Tools.List.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Tools.List.cursor; meta = None } in
+  let params = { Request.Tools.List.cursor; meta } in
   send_request client (Request.ToolsList params) (fun response ->
       match response with
       | Ok json -> (
@@ -234,10 +234,10 @@ let tools_list (client : t) ?cursor
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let tools_call (client : t) ~name ?arguments
+let tools_call (client : t) ~name ?arguments ?meta
     (callback : (Request.Tools.Call.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Tools.Call.name; arguments; meta = None } in
+  let params = { Request.Tools.Call.name; arguments; meta } in
   send_request client (Request.ToolsCall params) (fun response ->
       match response with
       | Ok json -> (

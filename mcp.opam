@@ -17,6 +17,7 @@ depends: [
   "yojson"
   "ppx_deriving_yojson"
   "logs"
+  "re"
   "odoc" {with-doc}
 ]
 build: [
