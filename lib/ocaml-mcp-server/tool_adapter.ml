@@ -53,10 +53,15 @@ let register_tool (type args out err)
               Mcp.Request.Tools.Call.content =
                 [
                   Mcp.Types.Content.Text
-                    { type_ = "text"; text = Yojson.Safe.to_string json_output };
+                    {
+                      type_ = "text";
+                      text = Yojson.Safe.to_string json_output;
+                      meta = None;
+                    };
                 ];
               is_error = Some false;
               structured_content = Some json_output;
+              meta = None;
             }
       | Error err ->
           Ok
@@ -64,10 +69,15 @@ let register_tool (type args out err)
               Mcp.Request.Tools.Call.content =
                 [
                   Mcp.Types.Content.Text
-                    { type_ = "text"; text = error_to_string (module T) err };
+                    {
+                      type_ = "text";
+                      text = error_to_string (module T) err;
+                      meta = None;
+                    };
                 ];
               is_error = Some true;
               structured_content = None;
+              meta = None;
             })
 
 (** Register all ocaml-platform-sdk tools *)

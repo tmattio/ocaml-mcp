@@ -6,3 +6,4 @@ module Notification = Mcp_notification
 module Protocol = Mcp_protocol
 module Server = Mcp_server
 module Client = Mcp_client
+module Meta = Mcp_meta

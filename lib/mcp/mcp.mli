@@ -31,3 +31,6 @@ module Server = Mcp_server
 
 module Client = Mcp_client
 (** Client implementation for connecting to MCP servers. *)
+
+module Meta = Mcp_meta
+(** Validator for _meta field keys. *)
