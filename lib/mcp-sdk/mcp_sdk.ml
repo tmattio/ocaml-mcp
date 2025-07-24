@@ -33,21 +33,27 @@ module Tool_result = struct
       Mcp.Request.Tools.Call.content = Option.value content ~default:[];
       Mcp.Request.Tools.Call.structured_content;
       Mcp.Request.Tools.Call.is_error;
+      Mcp.Request.Tools.Call.meta = None;
     }
 
   let text s =
-    create ~content:[ Mcp.Types.Content.Text { type_ = "text"; text = s } ] ()
+    create
+      ~content:
+        [ Mcp.Types.Content.Text { type_ = "text"; text = s; meta = None } ]
+      ()
 
   let error msg =
     create
-      ~content:[ Mcp.Types.Content.Text { type_ = "text"; text = msg } ]
+      ~content:
+        [ Mcp.Types.Content.Text { type_ = "text"; text = msg; meta = None } ]
       ~is_error:true ()
 
   let structured ?text json =
     let content =
       match text with
       | None -> []
-      | Some t -> [ Mcp.Types.Content.Text { type_ = "text"; text = t } ]
+      | Some t ->
+          [ Mcp.Types.Content.Text { type_ = "text"; text = t; meta = None } ]
     in
     create ~content ~structured_content:json ()
 end
@@ -551,6 +557,7 @@ module Server = struct
                 capabilities = t.capabilities;
                 server_info = t.server_info;
                 instructions = None;
+                meta = None;
               });
         on_tools_list =
           (fun params ->
@@ -564,17 +571,18 @@ module Server = struct
                     input_schema = Option.value ~default:(`Assoc []) h.schema;
                     output_schema = h.output_schema;
                     annotations = h.annotations;
+                    meta = None;
                   }
                   :: acc)
                 t.tools []
             in
             match t.pagination_config with
-            | None -> Ok { tools = all_tools; next_cursor = None }
+            | None -> Ok { tools = all_tools; next_cursor = None; meta = None }
             | Some config ->
                 let tools, next_cursor =
                   paginate_list all_tools params.cursor config.page_size
                 in
-                Ok { tools; next_cursor });
+                Ok { tools; next_cursor; meta = None });
         on_tools_call =
           (fun params ->
             match Hashtbl.find_opt t.tools params.name with
@@ -606,6 +614,7 @@ module Server = struct
                         description = r.info.description;
                         size = None;
                         annotations = None;
+                        meta = None;
                       }
                       :: acc
                   | TemplateResource r -> (
@@ -621,12 +630,14 @@ module Server = struct
                 t.resources []
             in
             match t.pagination_config with
-            | None -> Ok { resources = all_resources; next_cursor = None }
+            | None ->
+                Ok
+                  { resources = all_resources; next_cursor = None; meta = None }
             | Some config ->
                 let resources, next_cursor =
                   paginate_list all_resources params.cursor config.page_size
                 in
-                Ok { resources; next_cursor });
+                Ok { resources; next_cursor; meta = None });
         on_resources_templates_list =
           (fun _params ->
             let templates =
@@ -642,11 +653,17 @@ module Server = struct
                         title = r.info.title;
                         description = r.info.description;
                         annotations = None;
+                        meta = None;
                       }
                       :: acc)
                 t.resources []
             in
-            Ok { resource_templates = templates; next_cursor = None });
+            Ok
+              {
+                resource_templates = templates;
+                next_cursor = None;
+                meta = None;
+              });
         on_resources_read =
           (fun params ->
             let check_static uri =
@@ -712,17 +729,19 @@ module Server = struct
                               };
                             ]
                       | None -> None);
+                    meta = None;
                   }
                   :: acc)
                 t.prompts []
             in
             match t.pagination_config with
-            | None -> Ok { prompts = all_prompts; next_cursor = None }
+            | None ->
+                Ok { prompts = all_prompts; next_cursor = None; meta = None }
             | Some config ->
                 let prompts, next_cursor =
                   paginate_list all_prompts params.cursor config.page_size
                 in
-                Ok { prompts; next_cursor });
+                Ok { prompts; next_cursor; meta = None });
         on_prompts_get =
           (fun params ->
             match Hashtbl.find_opt t.prompts params.name with
@@ -759,7 +778,7 @@ module Server = struct
                 m "MCP log level set to %s"
                   (Yojson.Safe.to_string
                      (Mcp.Types.LogLevel.to_yojson params.level)));
-            Ok ());
+            Ok { meta = None });
       }
     in
 
@@ -826,7 +845,9 @@ module Client = struct
       | Error e -> callback (Error e))
 
   let tools_list t callback =
-    let params = { Mcp.Request.Tools.List.cursor = None } in
+    let params : Mcp.Request.Tools.List.params =
+      { cursor = None; meta = None }
+    in
     let request : Mcp.Request.t = Mcp.Request.ToolsList params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (
@@ -836,8 +857,8 @@ module Client = struct
       | Error e -> callback (Error e.message))
 
   let tools_call t ~name ~args ~args_to_yojson callback =
-    let params =
-      { Mcp.Request.Tools.Call.name; arguments = Some (args_to_yojson args) }
+    let params : Mcp.Request.Tools.Call.params =
+      { name; arguments = Some (args_to_yojson args); meta = None }
     in
     let request : Mcp.Request.t = Mcp.Request.ToolsCall params in
     Mcp.Client.send_request (get_mcp_client t) request (function

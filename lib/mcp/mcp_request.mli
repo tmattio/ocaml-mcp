@@ -13,7 +13,7 @@ module Initialize : sig
     capabilities : Capabilities.client;
     client_info : ClientInfo.t;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Initialization parameters with version and capabilities. *)
 
   type result = {
@@ -21,46 +21,60 @@ module Initialize : sig
     capabilities : Capabilities.server;
     server_info : ServerInfo.t;
     instructions : string option;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Initialization result with negotiated version and server info. *)
 end
 
 (** Resource discovery and reading. *)
 module Resources : sig
   module List : sig
-    type params = { cursor : cursor option } [@@deriving yojson]
+    type params = { cursor : cursor option }
+    [@@deriving yojson { strict = false }]
 
-    type result = { resources : Resource.t list; next_cursor : cursor option }
-    [@@deriving yojson]
+    type result = {
+      resources : Resource.t list;
+      next_cursor : cursor option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
   end
 
   module Read : sig
-    type params = { uri : string } [@@deriving yojson]
+    type params = { uri : string } [@@deriving yojson { strict = false }]
 
-    type result = { contents : Content.resource_contents list }
-    [@@deriving yojson]
+    type result = {
+      contents : Content.resource_contents list;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
   end
 
   module Subscribe : sig
-    type params = { uri : string } [@@deriving yojson]
-    type result = unit [@@deriving yojson]
+    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type result = unit [@@deriving yojson { strict = false }]
   end
 
   module Unsubscribe : sig
-    type params = { uri : string } [@@deriving yojson]
-    type result = unit [@@deriving yojson]
+    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type result = unit [@@deriving yojson { strict = false }]
   end
 
   module Templates : sig
     module List : sig
-      type params = { cursor : cursor option } [@@deriving yojson]
+      type params = {
+        cursor : cursor option;
+        meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      }
+      [@@deriving yojson { strict = false }]
 
       type result = {
         resource_templates : Resource.template list;
         next_cursor : cursor option;
+        meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
       }
-      [@@deriving yojson]
+      [@@deriving yojson { strict = false }]
     end
   end
 end
@@ -68,10 +82,15 @@ end
 (** Prompt template management. *)
 module Prompts : sig
   module List : sig
-    type params = { cursor : cursor option } [@@deriving yojson]
+    type params = { cursor : cursor option }
+    [@@deriving yojson { strict = false }]
 
-    type result = { prompts : Prompt.t list; next_cursor : cursor option }
-    [@@deriving yojson]
+    type result = {
+      prompts : Prompt.t list;
+      next_cursor : cursor option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
   end
 
   module Get : sig
@@ -83,30 +102,44 @@ module Prompts : sig
     type result = {
       description : string option;
       messages : Prompt.message list;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
   end
 end
 
 (** Tool discovery and invocation. *)
 module Tools : sig
   module List : sig
-    type params = { cursor : cursor option } [@@deriving yojson]
+    type params = {
+      cursor : cursor option; [@default None]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
 
-    type result = { tools : Tool.t list; next_cursor : cursor option }
-    [@@deriving yojson]
+    type result = {
+      tools : Tool.t list;
+      next_cursor : cursor option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
   end
 
   module Call : sig
-    type params = { name : string; arguments : Yojson.Safe.t option }
-    [@@deriving yojson]
+    type params = {
+      name : string;
+      arguments : Yojson.Safe.t option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
 
     type result = {
       content : Content.t list;
       is_error : bool option;
       structured_content : Yojson.Safe.t option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
   end
 end
 
@@ -123,15 +156,16 @@ module Sampling : sig
       stop_sequences : string list option;
       metadata : Yojson.Safe.t option;
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
 
     type result = {
       role : string;
       content : Content.t;
       model : string;
       stop_reason : string option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
   end
 end
 
@@ -146,6 +180,7 @@ module Elicitation : sig
     type result = {
       action : string;
       content : (string * Yojson.Safe.t) list option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
 
     val result_to_yojson : result -> Yojson.Safe.t
@@ -156,8 +191,13 @@ end
 (** Logging configuration. *)
 module Logging : sig
   module SetLevel : sig
-    type params = { level : LogLevel.t } [@@deriving yojson]
-    type result = unit [@@deriving yojson]
+    type params = {
+      level : LogLevel.t;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
+
+    type result = OnlyMetaParams.t [@@deriving yojson { strict = false }]
   end
 end
 
@@ -168,24 +208,33 @@ module Completion : sig
       ref_ : CompletionReference.t;
       argument : CompletionArgument.t;
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
 
-    type result = Completion.t [@@deriving yojson]
+    type result = {
+      completion : Completion.t;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
   end
 end
 
 (** Root directory listing. *)
 module Roots : sig
   module List : sig
-    type params = unit [@@deriving yojson]
-    type result = { roots : Root.t list } [@@deriving yojson]
+    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+
+    type result = {
+      roots : Root.t list;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
   end
 end
 
 (** Connection keep-alive. *)
 module Ping : sig
-  type params = unit [@@deriving yojson]
-  type result = unit [@@deriving yojson]
+  type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+  type result = unit [@@deriving yojson { strict = false }]
 end
 
 type t =
@@ -203,8 +252,8 @@ type t =
   | ElicitationCreate of Elicitation.Create.params
   | LoggingSetLevel of Logging.SetLevel.params
   | CompletionComplete of Completion.Complete.params
-  | RootsList
-  | Ping  (** Request variants for all MCP methods. *)
+  | RootsList of Roots.List.params
+  | Ping of Ping.params  (** Request variants for all MCP methods. *)
 
 val method_name : t -> string
 (** [method_name request] returns JSON-RPC method name. *)

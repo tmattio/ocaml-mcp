@@ -62,14 +62,14 @@ type error = {
   message : string;
   data : Yojson.Safe.t option;
 }
-[@@deriving yojson]
+[@@deriving yojson { strict = false }]
 (** JSON-RPC error response. *)
 
-type meta = Yojson.Safe.t [@@deriving yojson]
-(** Arbitrary metadata as JSON. *)
-
-type 'a with_meta = { result : 'a; meta : meta option } [@@deriving yojson]
-(** Type with optional metadata. *)
+module OnlyMetaParams : sig
+  type t = { meta : Yojson.Safe.t option [@default None] [@key "_meta"] }
+  [@@deriving yojson { strict = false }]
+  (** Parameters that can be either unit, or only _meta. *)
+end
 
 (** Log severity levels. *)
 module LogLevel : sig
@@ -88,15 +88,30 @@ end
 
 (** Content types for messages and resources. *)
 module Content : sig
-  type text = { type_ : string; text : string } [@@deriving yojson]
+  type text = {
+    type_ : string;
+    text : string;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+  }
+  [@@deriving yojson { strict = false }]
   (** Text content with MIME type. *)
 
-  type image = { type_ : string; data : string; mime_type : string }
-  [@@deriving yojson]
+  type image = {
+    type_ : string;
+    data : string;
+    mime_type : string;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+  }
+  [@@deriving yojson { strict = false }]
   (** Base64-encoded image with MIME type. *)
 
-  type audio = { type_ : string; data : string; mime_type : string }
-  [@@deriving yojson]
+  type audio = {
+    type_ : string;
+    data : string;
+    mime_type : string;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+  }
+  [@@deriving yojson { strict = false }]
   (** Base64-encoded audio with MIME type. *)
 
   type resource_link = {
@@ -108,8 +123,9 @@ module Content : sig
     mime_type : string option;
     size : int option;
     annotations : Yojson.Safe.t option;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Reference to external resource. *)
 
   type resource_contents = {
@@ -117,12 +133,17 @@ module Content : sig
     mime_type : string option;
     text : string option;
     blob : string option;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Resource contents with either text or base64 blob. *)
 
-  type embedded_resource = { type_ : string; resource : resource_contents }
-  [@@deriving yojson]
+  type embedded_resource = {
+    type_ : string;
+    resource : resource_contents;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+  }
+  [@@deriving yojson { strict = false }]
   (** Inline resource with contents. *)
 
   (** Content variants for different media types. *)
@@ -132,7 +153,7 @@ module Content : sig
     | Audio of audio
     | ResourceLink of resource_link
     | EmbeddedResource of embedded_resource
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 (** Resource descriptions and templates. *)
@@ -145,8 +166,9 @@ module Resource : sig
     mime_type : string option;
     size : int option;
     annotations : Yojson.Safe.t option;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Resource with URI and metadata. *)
 
   type template = {
@@ -156,8 +178,9 @@ module Resource : sig
     description : string option;
     mime_type : string option;
     annotations : Yojson.Safe.t option;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Resource template with URI pattern. *)
 end
 
@@ -170,7 +193,7 @@ module Tool : sig
     idempotent : bool option;
     open_world : bool option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Tool behavior annotations. *)
 
   type t = {
@@ -180,8 +203,9 @@ module Tool : sig
     input_schema : Yojson.Safe.t;
     output_schema : Yojson.Safe.t option;
     annotations : annotation option;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Tool with JSON Schema for input/output. *)
 end
 
@@ -193,7 +217,7 @@ module Prompt : sig
     description : string option;
     required : bool option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Prompt argument specification. *)
 
   type t = {
@@ -201,27 +225,32 @@ module Prompt : sig
     title : string option;
     description : string option;
     arguments : argument list option;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Prompt template with arguments. *)
 
-  type message = { role : string; content : Content.t } [@@deriving yojson]
+  type message = { role : string; content : Content.t }
+  [@@deriving yojson { strict = false }]
   (** Message with role and content. *)
 end
 
 (** Client and server capabilities. *)
 module Capabilities : sig
-  type roots = { list_changed : bool option } [@@deriving yojson]
+  type roots = { list_changed : bool option }
+  [@@deriving yojson { strict = false }]
   (** Root directory change notifications. *)
 
-  type prompts = { list_changed : bool option } [@@deriving yojson]
+  type prompts = { list_changed : bool option }
+  [@@deriving yojson { strict = false }]
   (** Prompt list change notifications. *)
 
   type resources = { subscribe : bool option; list_changed : bool option }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Resource subscription and change notifications. *)
 
-  type tools = { list_changed : bool option } [@@deriving yojson]
+  type tools = { list_changed : bool option }
+  [@@deriving yojson { strict = false }]
   (** Tool list change notifications. *)
 
   type client = {
@@ -230,7 +259,7 @@ module Capabilities : sig
     elicitation : Yojson.Safe.t option;
     roots : roots option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Client-supported capabilities. *)
 
   type server = {
@@ -241,43 +270,52 @@ module Capabilities : sig
     resources : resources option;
     tools : tools option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Server-supported capabilities. *)
 end
 
 (** Implementation information. *)
 module Implementation : sig
-  type t = { name : string; version : string } [@@deriving yojson]
+  type t = { name : string; version : string }
+  [@@deriving yojson { strict = false }]
   (** Implementation name and version. *)
 end
 
 (** Client information. *)
 module ClientInfo : sig
-  type t = { name : string; version : string } [@@deriving yojson]
+  type t = { name : string; version : string }
+  [@@deriving yojson { strict = false }]
   (** Client name and version. *)
 end
 
 (** Server information. *)
 module ServerInfo : sig
-  type t = { name : string; version : string } [@@deriving yojson]
+  type t = { name : string; version : string }
+  [@@deriving yojson { strict = false }]
   (** Server name and version. *)
 end
 
 (** Root directory information. *)
 module Root : sig
-  type t = { uri : string; name : string option } [@@deriving yojson]
+  type t = {
+    uri : string;
+    name : string option;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+  }
+  [@@deriving yojson { strict = false }]
   (** Root directory URI with optional name. *)
 end
 
 (** Sampling message for model interactions. *)
 module SamplingMessage : sig
-  type t = { role : string; content : Content.t } [@@deriving yojson]
+  type t = { role : string; content : Content.t }
+  [@@deriving yojson { strict = false }]
   (** Message with role and content for sampling. *)
 end
 
 (** Model hint for sampling. *)
 module ModelHint : sig
-  type t = { name : string option } [@@deriving yojson]
+  type t = { name : string option } [@@deriving yojson { strict = false }]
   (** Optional model name hint. *)
 end
 
@@ -289,13 +327,14 @@ module ModelPreferences : sig
     speed_priority : float option;
     intelligence_priority : float option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Preferences for model selection with priority weights. *)
 end
 
 (** Completion argument specification. *)
 module CompletionArgument : sig
-  type t = { name : string; value : string } [@@deriving yojson]
+  type t = { name : string; value : string }
+  [@@deriving yojson { strict = false }]
   (** Named argument with value. *)
 end
 
@@ -303,13 +342,13 @@ end
 module CompletionReference : sig
   (** Reference to completable items by type and name. *)
   type t = Resource of string | ResourceTemplate of string | Prompt of string
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 (** Completion result with pagination. *)
 module Completion : sig
   type t = { values : string list; total : int option; has_more : bool option }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
   (** Completion values with optional pagination info. *)
 end
 
@@ -323,7 +362,7 @@ module PrimitiveSchema : sig
     min_length : int option;
     max_length : int option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type number_schema = {
     type_ : string;
@@ -332,7 +371,7 @@ module PrimitiveSchema : sig
     minimum : int option;
     maximum : int option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type boolean_schema = {
     type_ : string;
@@ -340,7 +379,7 @@ module PrimitiveSchema : sig
     description : string option;
     default : bool option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type enum_schema = {
     type_ : string;
@@ -349,14 +388,14 @@ module PrimitiveSchema : sig
     enum : string list;
     enum_names : string list option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type t =
     | String of string_schema
     | Number of number_schema
     | Boolean of boolean_schema
     | Enum of enum_schema
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 (** Elicitation schema for structured input. *)

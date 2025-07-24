@@ -71,12 +71,12 @@ let handle_notification (client : t) (notification : Notification.t) : unit =
   match notification with
   | Notification.ResourcesUpdated params ->
       client.notification_handler.on_resources_updated params
-  | Notification.ResourcesListChanged ->
-      client.notification_handler.on_resources_list_changed ()
-  | Notification.PromptsListChanged ->
-      client.notification_handler.on_prompts_list_changed ()
-  | Notification.ToolsListChanged ->
-      client.notification_handler.on_tools_list_changed ()
+  | Notification.ResourcesListChanged params ->
+      client.notification_handler.on_resources_list_changed params
+  | Notification.PromptsListChanged params ->
+      client.notification_handler.on_prompts_list_changed params
+  | Notification.ToolsListChanged params ->
+      client.notification_handler.on_tools_list_changed params
   | Notification.Message params -> client.notification_handler.on_message params
   | _ -> () (* Client doesn't handle other notifications *)
 
@@ -113,8 +113,8 @@ let handle_request (client : t) (id : Jsonrpc.Id.t) (request : Request.t) :
         | Request.ElicitationCreate params ->
             handler.on_elicitation_create params
             |> Result.map Request.Elicitation.Create.result_to_yojson
-        | Request.RootsList ->
-            handler.on_roots_list ()
+        | Request.RootsList params ->
+            handler.on_roots_list params
             |> Result.map Request.Roots.List.result_to_yojson
         | _ -> Error "Client does not handle this request type"
       in
@@ -225,7 +225,7 @@ let prompts_get (client : t) ~name ?arguments
 let tools_list (client : t) ?cursor
     (callback : (Request.Tools.List.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Tools.List.cursor } in
+  let params = { Request.Tools.List.cursor; meta = None } in
   send_request client (Request.ToolsList params) (fun response ->
       match response with
       | Ok json -> (
@@ -237,7 +237,7 @@ let tools_list (client : t) ?cursor
 let tools_call (client : t) ~name ?arguments
     (callback : (Request.Tools.Call.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Tools.Call.name; arguments } in
+  let params = { Request.Tools.Call.name; arguments; meta = None } in
   send_request client (Request.ToolsCall params) (fun response ->
       match response with
       | Ok json -> (

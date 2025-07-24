@@ -6,68 +6,80 @@ module Initialize = struct
     capabilities : Capabilities.client;
     client_info : ClientInfo.t; [@key "clientInfo"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type result = {
     protocol_version : string; [@key "protocolVersion"]
     capabilities : Capabilities.server;
     server_info : ServerInfo.t; [@key "serverInfo"]
     instructions : string option; [@default None]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 module Resources = struct
   module List = struct
-    type params = { cursor : cursor option [@default None] } [@@deriving yojson]
+    type params = { cursor : cursor option [@default None] }
+    [@@deriving yojson { strict = false }]
 
     type result = {
       resources : Resource.t list;
       next_cursor : cursor option; [@default None] [@key "nextCursor"]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
   end
 
   module Read = struct
-    type params = { uri : string } [@@deriving yojson]
+    type params = { uri : string } [@@deriving yojson { strict = false }]
 
-    type result = { contents : Content.resource_contents list }
-    [@@deriving yojson]
+    type result = {
+      contents : Content.resource_contents list;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
   end
 
   module Subscribe = struct
-    type params = { uri : string } [@@deriving yojson]
-    type result = unit [@@deriving yojson]
+    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type result = unit [@@deriving yojson { strict = false }]
   end
 
   module Unsubscribe = struct
-    type params = { uri : string } [@@deriving yojson]
-    type result = unit [@@deriving yojson]
+    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type result = unit [@@deriving yojson { strict = false }]
   end
 
   module Templates = struct
     module List = struct
-      type params = { cursor : cursor option [@default None] }
-      [@@deriving yojson]
+      type params = {
+        cursor : cursor option; [@default None]
+        meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      }
+      [@@deriving yojson { strict = false }]
 
       type result = {
         resource_templates : Resource.template list; [@key "resourceTemplates"]
         next_cursor : cursor option; [@default None] [@key "nextCursor"]
+        meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
       }
-      [@@deriving yojson]
+      [@@deriving yojson { strict = false }]
     end
   end
 end
 
 module Prompts = struct
   module List = struct
-    type params = { cursor : cursor option [@default None] } [@@deriving yojson]
+    type params = { cursor : cursor option [@default None] }
+    [@@deriving yojson { strict = false }]
 
     type result = {
       prompts : Prompt.t list;
       next_cursor : cursor option; [@default None] [@key "nextCursor"]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
   end
 
   module Get = struct
@@ -118,36 +130,44 @@ module Prompts = struct
     type result = {
       description : string option; [@default None]
       messages : Prompt.message list;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
   end
 end
 
 module Tools = struct
   module List = struct
-    type params = { cursor : cursor option [@default None] } [@@deriving yojson]
+    type params = {
+      cursor : cursor option; [@default None]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
 
     type result = {
       tools : Tool.t list;
       next_cursor : cursor option; [@default None] [@key "nextCursor"]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
   end
 
   module Call = struct
     type params = {
       name : string;
-      arguments : Yojson.Safe.t option; [@default None]
+      arguments : Yojson.Safe.t option;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
 
     type result = {
       content : Content.t list;
       is_error : bool option; [@default None] [@key "isError"]
       structured_content : Yojson.Safe.t option;
           [@default None] [@key "structuredContent"]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
   end
 end
 
@@ -165,15 +185,16 @@ module Sampling = struct
           [@default None] [@key "stopSequences"]
       metadata : Yojson.Safe.t option; [@default None]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
 
     type result = {
       role : string;
       content : Content.t;
       model : string;
       stop_reason : string option; [@default None] [@key "stopReason"]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
   end
 end
 
@@ -208,6 +229,7 @@ module Elicitation = struct
     type result = {
       action : string;
       content : (string * Yojson.Safe.t) list option; [@default None]
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
     }
 
     let result_to_yojson result =
@@ -228,7 +250,12 @@ module Elicitation = struct
                 | Some (`Assoc content) -> Some content
                 | _ -> None
               in
-              Ok { action; content }
+              let meta =
+                match Stdlib.List.assoc_opt "_meta" fields with
+                | Some meta -> Some meta
+                | None -> None
+              in
+              Ok { action; content; meta }
           | _ -> Error "Invalid elicitation result")
       | _ -> Error "Elicitation result must be an object"
   end
@@ -236,8 +263,13 @@ end
 
 module Logging = struct
   module SetLevel = struct
-    type params = { level : LogLevel.t } [@@deriving yojson]
-    type result = unit [@@deriving yojson]
+    type params = {
+      level : LogLevel.t;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
+
+    type result = OnlyMetaParams.t [@@deriving yojson { strict = false }]
   end
 end
 
@@ -247,22 +279,34 @@ module Completion = struct
       ref_ : CompletionReference.t; [@key "ref"]
       argument : CompletionArgument.t;
     }
-    [@@deriving yojson]
+    [@@deriving yojson { strict = false }]
 
-    type result = Completion.t [@@deriving yojson]
+    type result = {
+      completion : Completion.t;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
   end
 end
 
 module Roots = struct
   module List = struct
-    type params = unit [@@deriving yojson]
-    type result = { roots : Root.t list } [@@deriving yojson]
+    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+
+    type result = {
+      roots : Root.t list;
+      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    }
+    [@@deriving yojson { strict = false }]
   end
 end
 
 module Ping = struct
-  type params = unit [@@deriving yojson]
-  type result = unit [@@deriving yojson]
+  type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+  type result = unit
+
+  let result_to_yojson () = `Assoc []
+  let result_of_yojson _ = Ok ()
 end
 
 type t =
@@ -280,8 +324,8 @@ type t =
   | ElicitationCreate of Elicitation.Create.params
   | LoggingSetLevel of Logging.SetLevel.params
   | CompletionComplete of Completion.Complete.params
-  | RootsList
-  | Ping
+  | RootsList of Roots.List.params
+  | Ping of Ping.params
 
 let method_name = function
   | Initialize _ -> "initialize"
@@ -298,8 +342,8 @@ let method_name = function
   | ElicitationCreate _ -> "elicitation/create"
   | LoggingSetLevel _ -> "logging/setLevel"
   | CompletionComplete _ -> "completion/complete"
-  | RootsList -> "roots/list"
-  | Ping -> "ping"
+  | RootsList _ -> "roots/list"
+  | Ping _ -> "ping"
 
 let params_to_yojson = function
   | Initialize params -> Initialize.params_to_yojson params
@@ -318,8 +362,8 @@ let params_to_yojson = function
   | ElicitationCreate params -> Elicitation.Create.params_to_yojson params
   | LoggingSetLevel params -> Logging.SetLevel.params_to_yojson params
   | CompletionComplete params -> Completion.Complete.params_to_yojson params
-  | RootsList -> Roots.List.params_to_yojson ()
-  | Ping -> Ping.params_to_yojson ()
+  | RootsList params -> Roots.List.params_to_yojson params
+  | Ping params -> Ping.params_to_yojson params
 
 let of_jsonrpc (method_ : string) (params : Yojson.Safe.t option) :
     (t, string) result =
@@ -383,11 +427,11 @@ let of_jsonrpc (method_ : string) (params : Yojson.Safe.t option) :
       | Error e -> Error e)
   | "roots/list" -> (
       match Roots.List.params_of_yojson params with
-      | Ok () -> Ok RootsList
+      | Ok params -> Ok (RootsList params)
       | Error e -> Error e)
   | "ping" -> (
       match Ping.params_of_yojson params with
-      | Ok () -> Ok Ping
+      | Ok params -> Ok (Ping params)
       | Error e -> Error e)
   | _ -> Error (Printf.sprintf "Unknown method: %s" method_)
 

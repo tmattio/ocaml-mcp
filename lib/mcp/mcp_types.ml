@@ -29,46 +29,86 @@ type error = {
   message : string;
   data : Yojson.Safe.t option; [@default None]
 }
-[@@deriving yojson]
+[@@deriving yojson { strict = false }]
 
-type meta = Yojson.Safe.t [@@deriving yojson]
+module OnlyMetaParams = struct
+  type shadow_t = { meta : Yojson.Safe.t option [@default None] [@key "_meta"] }
+  [@@deriving yojson { strict = false }]
 
-type 'a with_meta = {
-  result : 'a; [@key "_result"]
-  meta : meta option; [@default None] [@key "_meta"]
-}
-[@@deriving yojson]
+  type t = { meta : Yojson.Safe.t option [@default None] [@key "_meta"] }
+
+  let of_yojson json : (t, string) result =
+    (* Try the shadow_t parser *)
+    match shadow_t_of_yojson json with
+    | Ok shadow -> Ok { meta = shadow.meta }
+    | Error _ -> Ok { meta = None }
+  (* NOTE: This always succeeds because it is always valid to not have _meta *)
+
+  let to_yojson { meta } =
+    match meta with
+    | Some _ -> shadow_t_to_yojson { meta }
+    | None -> `Assoc [] (* If no meta, return empty object *)
+
+  (** Parameters that can be either unit, or only _meta. *)
+end
 
 module LogLevel = struct
   type t =
-    | Debug [@name "debug"]
-    | Info [@name "info"]
-    | Notice [@name "notice"]
-    | Warning [@name "warning"]
-    | Error [@name "error"]
-    | Critical [@name "critical"]
-    | Alert [@name "alert"]
-    | Emergency [@name "emergency"]
-  [@@deriving yojson]
+    | Debug
+    | Info
+    | Notice
+    | Warning
+    | Error
+    | Critical
+    | Alert
+    | Emergency
+
+  let of_yojson json =
+    match json with
+    | `String "debug" -> Ok Debug
+    | `String "info" -> Ok Info
+    | `String "notice" -> Ok Notice
+    | `String "warning" -> Ok Warning
+    | `String "error" -> Ok Error
+    | `String "critical" -> Ok Critical
+    | `String "alert" -> Ok Alert
+    | `String "emergency" -> Ok Emergency
+    | _ -> Error "Invalid log level"
+
+  let to_yojson = function
+    | Debug -> `String "debug"
+    | Info -> `String "info"
+    | Notice -> `String "notice"
+    | Warning -> `String "warning"
+    | Error -> `String "error"
+    | Critical -> `String "critical"
+    | Alert -> `String "alert"
+    | Emergency -> `String "emergency"
 end
 
 module Content = struct
-  type text = { type_ : string; [@key "type"] text : string }
-  [@@deriving yojson]
+  type text = {
+    type_ : string; [@key "type"]
+    text : string;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+  }
+  [@@deriving yojson { strict = false }]
 
   type image = {
     type_ : string; [@key "type"]
     data : string;
     mime_type : string; [@key "mimeType"]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type audio = {
     type_ : string; [@key "type"]
     data : string;
     mime_type : string; [@key "mimeType"]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type resource_link = {
     type_ : string; [@key "type"]
@@ -79,22 +119,25 @@ module Content = struct
     mime_type : string option; [@default None] [@key "mimeType"]
     size : int option; [@default None]
     annotations : Yojson.Safe.t option; [@default None]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type resource_contents = {
     uri : string;
     mime_type : string option; [@default None] [@key "mimeType"]
     text : string option; [@default None]
     blob : string option; [@default None]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type embedded_resource = {
     type_ : string; [@key "type"]
     resource : resource_contents;
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type t =
     | Text of text
@@ -140,8 +183,9 @@ module Resource = struct
     mime_type : string option; [@default None] [@key "mimeType"]
     size : int option; [@default None]
     annotations : Yojson.Safe.t option; [@default None]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type template = {
     uri_template : string; [@key "uriTemplate"]
@@ -150,8 +194,9 @@ module Resource = struct
     description : string option; [@default None]
     mime_type : string option; [@default None] [@key "mimeType"]
     annotations : Yojson.Safe.t option; [@default None]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 module Tool = struct
@@ -162,7 +207,7 @@ module Tool = struct
     idempotent : bool option; [@default None] [@key "idempotentHint"]
     open_world : bool option; [@default None] [@key "openWorldHint"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type t = {
     name : string;
@@ -171,8 +216,9 @@ module Tool = struct
     input_schema : Yojson.Safe.t; [@key "inputSchema"]
     output_schema : Yojson.Safe.t option; [@default None] [@key "outputSchema"]
     annotations : annotation option; [@default None]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 module Prompt = struct
@@ -182,36 +228,38 @@ module Prompt = struct
     description : string option; [@default None]
     required : bool option; [@default None]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type t = {
     name : string;
     title : string option; [@default None]
     description : string option; [@default None]
     arguments : argument list option; [@default None]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
-  type message = { role : string; content : Content.t } [@@deriving yojson]
+  type message = { role : string; content : Content.t }
+  [@@deriving yojson { strict = false }]
 end
 
 module Capabilities = struct
   type roots = {
     list_changed : bool option; [@default None] [@key "listChanged"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type prompts = { list_changed : bool option [@key "listChanged"] }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type resources = {
     subscribe : bool option;
     list_changed : bool option; [@key "listChanged"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type tools = { list_changed : bool option [@key "listChanged"] }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type client = {
     experimental : Yojson.Safe.t option; [@default None]
@@ -219,7 +267,7 @@ module Capabilities = struct
     elicitation : Yojson.Safe.t option; [@default None]
     roots : roots option; [@default None]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type server = {
     experimental : Yojson.Safe.t option; [@default None]
@@ -229,32 +277,41 @@ module Capabilities = struct
     resources : resources option; [@default None]
     tools : tools option; [@default None]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 module Implementation = struct
-  type t = { name : string; version : string } [@@deriving yojson]
+  type t = { name : string; version : string }
+  [@@deriving yojson { strict = false }]
 end
 
 module ClientInfo = struct
-  type t = { name : string; version : string } [@@deriving yojson]
+  type t = { name : string; version : string }
+  [@@deriving yojson { strict = false }]
 end
 
 module ServerInfo = struct
-  type t = { name : string; version : string } [@@deriving yojson]
+  type t = { name : string; version : string }
+  [@@deriving yojson { strict = false }]
 end
 
 module Root = struct
-  type t = { uri : string; name : string option [@default None] }
-  [@@deriving yojson]
+  type t = {
+    uri : string;
+    name : string option; [@default None]
+    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+  }
+  [@@deriving yojson { strict = false }]
 end
 
 module SamplingMessage = struct
-  type t = { role : string; content : Content.t } [@@deriving yojson]
+  type t = { role : string; content : Content.t }
+  [@@deriving yojson { strict = false }]
 end
 
 module ModelHint = struct
-  type t = { name : string option [@default None] } [@@deriving yojson]
+  type t = { name : string option [@default None] }
+  [@@deriving yojson { strict = false }]
 end
 
 module ModelPreferences = struct
@@ -265,11 +322,12 @@ module ModelPreferences = struct
     intelligence_priority : float option;
         [@default None] [@key "intelligencePriority"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 module CompletionArgument = struct
-  type t = { name : string; value : string } [@@deriving yojson]
+  type t = { name : string; value : string }
+  [@@deriving yojson { strict = false }]
 end
 
 module CompletionReference = struct
@@ -306,7 +364,7 @@ module Completion = struct
     total : int option; [@default None]
     has_more : bool option; [@default None] [@key "hasMore"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 module PrimitiveSchema = struct
@@ -318,7 +376,7 @@ module PrimitiveSchema = struct
     min_length : int option; [@default None] [@key "minLength"]
     max_length : int option; [@default None] [@key "maxLength"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type number_schema = {
     type_ : string; [@key "type"]
@@ -327,7 +385,7 @@ module PrimitiveSchema = struct
     minimum : int option; [@default None]
     maximum : int option; [@default None]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type boolean_schema = {
     type_ : string; [@key "type"]
@@ -335,7 +393,7 @@ module PrimitiveSchema = struct
     description : string option; [@default None]
     default : bool option; [@default None]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type enum_schema = {
     type_ : string; [@key "type"]
@@ -344,7 +402,7 @@ module PrimitiveSchema = struct
     enum : string list; [@key "enum"]
     enum_names : string list option; [@default None] [@key "enumNames"]
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 
   type t =
     | String of string_schema

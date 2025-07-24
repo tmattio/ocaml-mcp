@@ -38,9 +38,9 @@ let connect ~sw ~connection ~config =
   let handler : Mcp.Client.notification_handler =
     {
       on_resources_updated = (fun _ -> ());
-      on_resources_list_changed = (fun () -> ());
-      on_prompts_list_changed = (fun () -> ());
-      on_tools_list_changed = (fun () -> ());
+      on_resources_list_changed = (fun _ -> ());
+      on_prompts_list_changed = (fun _ -> ());
+      on_tools_list_changed = (fun _ -> ());
       on_message = (fun _ -> ());
     }
   in
@@ -170,13 +170,13 @@ let unsubscribe_resource t ~uri =
 let _ = (subscribe_resource, unsubscribe_resource)
 
 let list_tools t ?cursor () =
-  let json = request t (ToolsList { cursor }) in
+  let json = request t (ToolsList { cursor; meta = None }) in
   match Mcp.Request.Tools.List.result_of_yojson json with
   | Ok result -> result
   | Error msg -> failwith (Printf.sprintf "Failed to parse tools list: %s" msg)
 
 let call_tool t ~name ?arguments () =
-  let json = request t (ToolsCall { name; arguments }) in
+  let json = request t (ToolsCall { name; arguments; meta = None }) in
   match Mcp.Request.Tools.Call.result_of_yojson json with
   | Ok result -> result
   | Error msg ->
@@ -213,7 +213,7 @@ let get_prompt t ~name ?arguments () =
 let _ = get_prompt
 
 let set_log_level t ~level =
-  let _json = request t (LoggingSetLevel { level }) in
+  let _json = request t (LoggingSetLevel { level; meta = None }) in
   ()
 
 let set_notification_handler t handler = t.notification_handler <- Some handler

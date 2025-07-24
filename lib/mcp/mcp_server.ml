@@ -87,6 +87,7 @@ let handle_request (server : t) (id : Jsonrpc.Id.t) (request : Request.t) :
             capabilities = server.server_capabilities;
             server_info = server.server_info;
             instructions = None;
+            meta = None;
           }
         in
         match server.handler.on_initialize params with
@@ -165,26 +166,27 @@ let handle_request (server : t) (id : Jsonrpc.Id.t) (request : Request.t) :
           response_to_outgoing ~id (Request.CompletionComplete result)
       | Error msg ->
           error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.RootsList -> (
-      match server.handler.on_roots_list () with
+  | Request.RootsList params -> (
+      match server.handler.on_roots_list params with
       | Ok result -> response_to_outgoing ~id (Request.RootsList result)
       | Error msg ->
           error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
-  | Request.Ping -> (
-      match server.handler.on_ping () with
+  | Request.Ping params -> (
+      match server.handler.on_ping params with
       | Ok result -> response_to_outgoing ~id (Request.Ping result)
       | Error msg ->
           error_to_outgoing ~id ~code:ErrorCode.internal_error ~message:msg ())
 
 let handle_notification (server : t) (notification : Notification.t) : unit =
   match notification with
-  | Notification.Initialized -> server.notification_handler.on_initialized ()
+  | Notification.Initialized params ->
+      server.notification_handler.on_initialized params
   | Notification.Progress params ->
       server.notification_handler.on_progress params
   | Notification.Cancelled params ->
       server.notification_handler.on_cancelled params
-  | Notification.RootsListChanged ->
-      server.notification_handler.on_roots_list_changed ()
+  | Notification.RootsListChanged params ->
+      server.notification_handler.on_roots_list_changed params
   | _ -> () (* Server doesn't handle other notifications *)
 
 let handle_message (server : t) (msg : incoming_message) :
