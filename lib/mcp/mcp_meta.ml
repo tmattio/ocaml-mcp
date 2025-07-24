@@ -47,7 +47,7 @@ let validate_key key =
       if is_valid_name name then Ok ()
       else Error (Printf.sprintf "Invalid _meta key name: '%s'" key)
   | [ prefix_part; name ] ->
-      if not (is_valid_name name) then
+      if not (is_valid_label name) then
         Error (Printf.sprintf "Invalid _meta key name segment: '%s'" name)
       else if is_mcp_reserved_prefix (key ^ "/") then
         Error
