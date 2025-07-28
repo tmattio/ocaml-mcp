@@ -10,23 +10,23 @@ Test 1: Tool call without metadata
   {"path":"/tmp/test.txt","formatted":false,"diagnostics":null}
 
 Test 2: Tool call with valid metadata
-  $ mcp --pipe test.sock call fs_write -a '{"file_path":"/tmp/test-meta.txt","content":"hello"}' --meta '{"client/id":"test-123","debug.enabled":true}'
+  $ mcp --pipe test.sock --meta '{"client/id":"test-123","debug.enabled":true}' call fs_write -a '{"file_path":"/tmp/test-meta.txt","content":"hello"}' 
   {"path":"/tmp/test-meta.txt","formatted":false,"diagnostics":null}
 
 Test 3: Tool call with invalid metadata (reserved prefix)
-  $ mcp --pipe test.sock call fs_write -a '{"file_path":"/tmp/test-bad.txt","content":"hello"}' --meta '{"mcp.dev/internal":"value"}' 2>&1 | head -1
-  Fatal error: exception Failure("Request failed: JSON-RPC error")
+  $ mcp --pipe test.sock --meta '{"mcp.dev/internal":"value"}' call fs_write -a '{"file_path":"/tmp/test-bad.txt","content":"hello"}'  2>&1 | head -1
+  Invalid meta JSON: Using a reserved MCP prefix is not allowed: 'mcp.dev/internal'
 
 Test 4: Tool call with single-character prefix (should work)
-  $ mcp --pipe test.sock call fs_write -a '{"file_path":"/tmp/test-single.txt","content":"hello"}' --meta '{"x/feature":"enabled"}'
+  $ mcp --pipe test.sock --meta '{"x/feature":"enabled"}' call fs_write -a '{"file_path":"/tmp/test-single.txt","content":"hello"}'
   {"path":"/tmp/test-single.txt","formatted":false,"diagnostics":null}
 
 Test 5: List tools with metadata
-  $ mcp --pipe test.sock list tools --meta '{"client/version":"2.0"}' | grep -c "fs_write"
+  $ mcp --pipe test.sock --meta '{"client/version":"2.0"}' list tools | grep -c "fs_write"
   1
 
 Test 6: List resources with metadata
-  $ mcp --pipe test.sock list resources --meta '{"client/scope":"test"}' | head -1
+  $ mcp --pipe test.sock --meta '{"client/scope":"test"}' list resources | head -1
   Resources (0):
 
 Kill the server and clean up

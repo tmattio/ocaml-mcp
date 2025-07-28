@@ -309,16 +309,7 @@ let parse_transport args =
   in
   parse_opts args Stdio None
 
-let list_cmd transport_config what meta_json =
-  let meta =
-    Option.map
-      (fun json_str ->
-        try Yojson.Safe.from_string json_str
-        with Yojson.Json_error msg ->
-          eprintf "Invalid meta JSON: %s\n" msg;
-          exit 1)
-      meta_json
-  in
+let list_cmd transport_config what meta =
   with_client ~transport_config (fun client ->
       match String.lowercase_ascii what with
       | "resources" ->
@@ -352,16 +343,7 @@ let list_cmd transport_config what meta_json =
           eprintf "Unknown list target: %s\n" what;
           exit 1)
 
-let call_cmd transport_config tool_name args_json meta_json =
-  let meta =
-    Option.map
-      (fun json_str ->
-        try Yojson.Safe.from_string json_str
-        with Yojson.Json_error msg ->
-          eprintf "Invalid meta JSON: %s\n" msg;
-          exit 1)
-      meta_json
-  in
+let call_cmd transport_config tool_name args_json meta =
   with_client ~transport_config (fun client ->
       let arguments =
         Option.map
@@ -379,16 +361,7 @@ let call_cmd transport_config tool_name args_json meta_json =
         (fun content -> printf "%s\n" (format_content content))
         result.content)
 
-let read_cmd transport_config uri meta_json =
-  let meta =
-    Option.map
-      (fun json_str ->
-        try Yojson.Safe.from_string json_str
-        with Yojson.Json_error msg ->
-          eprintf "Invalid meta JSON: %s\n" msg;
-          exit 1)
-      meta_json
-  in
+let read_cmd transport_config uri meta =
   with_client ~transport_config (fun client ->
       let result = read_resource client ~uri ?meta () in
       printf "Resource contents:\n";
@@ -416,12 +389,28 @@ let info_cmd transport_config =
 let () =
   let args = List.tl (Array.to_list Sys.argv) in
   let transport, meta_json, remaining_args = parse_transport args in
+  let meta =
+    match meta_json with
+    | None -> None
+    | Some json_str -> (
+        match Yojson.Safe.from_string json_str with
+        | exception Yojson.Json_error msg ->
+            eprintf "Invalid meta JSON: %s\n" msg;
+            exit 1
+        | json -> (
+            (* Validate the meta JSON *)
+            match Mcp.Meta.validate (Some json) with
+            | Ok () -> Some json
+            | Error msg ->
+                eprintf "Invalid meta JSON: %s\n" msg;
+                exit 1))
+  in
 
   (* Use stderr for output when using stdio transport *)
   (match transport with Stdio -> use_stderr () | _ -> ());
 
   match remaining_args with
-  | "list" :: what :: _ -> list_cmd transport what meta_json
+  | "list" :: what :: _ -> list_cmd transport what meta
   | "call" :: tool :: rest ->
       let args_json =
         let rec find_args = function
@@ -431,7 +420,7 @@ let () =
         in
         find_args rest
       in
-      call_cmd transport tool args_json meta_json
-  | "read" :: uri :: _ -> read_cmd transport uri meta_json
+      call_cmd transport tool args_json meta
+  | "read" :: uri :: _ -> read_cmd transport uri meta
   | "info" :: _ -> info_cmd transport
   | _ -> print_usage ()
