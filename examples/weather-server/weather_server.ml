@@ -48,10 +48,11 @@ let () =
           Mcp.Request.Tools.Call.content =
             [
               Mcp.Types.Content.Text
-                { type_ = "text"; text = get_weather args.city };
+                { type_ = "text"; text = get_weather args.city; meta = None };
             ];
           is_error = None;
           structured_content = None;
+          meta = None;
         });
 
   (* Use stdio transport *)

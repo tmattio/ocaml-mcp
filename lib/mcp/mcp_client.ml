@@ -71,12 +71,12 @@ let handle_notification (client : t) (notification : Notification.t) : unit =
   match notification with
   | Notification.ResourcesUpdated params ->
       client.notification_handler.on_resources_updated params
-  | Notification.ResourcesListChanged ->
-      client.notification_handler.on_resources_list_changed ()
-  | Notification.PromptsListChanged ->
-      client.notification_handler.on_prompts_list_changed ()
-  | Notification.ToolsListChanged ->
-      client.notification_handler.on_tools_list_changed ()
+  | Notification.ResourcesListChanged params ->
+      client.notification_handler.on_resources_list_changed params
+  | Notification.PromptsListChanged params ->
+      client.notification_handler.on_prompts_list_changed params
+  | Notification.ToolsListChanged params ->
+      client.notification_handler.on_tools_list_changed params
   | Notification.Message params -> client.notification_handler.on_message params
   | _ -> () (* Client doesn't handle other notifications *)
 
@@ -113,8 +113,8 @@ let handle_request (client : t) (id : Jsonrpc.Id.t) (request : Request.t) :
         | Request.ElicitationCreate params ->
             handler.on_elicitation_create params
             |> Result.map Request.Elicitation.Create.result_to_yojson
-        | Request.RootsList ->
-            handler.on_roots_list ()
+        | Request.RootsList params ->
+            handler.on_roots_list params
             |> Result.map Request.Roots.List.result_to_yojson
         | _ -> Error "Client does not handle this request type"
       in
@@ -174,10 +174,10 @@ let get_server_info (client : t) : ServerInfo.t option = client.server_info
 
 (* Convenience functions for making requests *)
 
-let resources_list (client : t) ?cursor
+let resources_list (client : t) ?cursor ?meta
     (callback : (Request.Resources.List.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Resources.List.cursor } in
+  let params = { Request.Resources.List.cursor; meta } in
   send_request client (Request.ResourcesList params) (fun response ->
       match response with
       | Ok json -> (
@@ -186,10 +186,10 @@ let resources_list (client : t) ?cursor
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let resources_read (client : t) ~uri
+let resources_read (client : t) ~uri ?meta
     (callback : (Request.Resources.Read.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Resources.Read.uri } in
+  let params = { Request.Resources.Read.uri; meta } in
   send_request client (Request.ResourcesRead params) (fun response ->
       match response with
       | Ok json -> (
@@ -198,10 +198,10 @@ let resources_read (client : t) ~uri
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let prompts_list (client : t) ?cursor
+let prompts_list (client : t) ?cursor ?meta
     (callback : (Request.Prompts.List.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Prompts.List.cursor } in
+  let params = { Request.Prompts.List.cursor; meta } in
   send_request client (Request.PromptsList params) (fun response ->
       match response with
       | Ok json -> (
@@ -210,10 +210,10 @@ let prompts_list (client : t) ?cursor
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let prompts_get (client : t) ~name ?arguments
+let prompts_get (client : t) ~name ?arguments ?meta
     (callback : (Request.Prompts.Get.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Prompts.Get.name; arguments } in
+  let params = { Request.Prompts.Get.name; arguments; meta } in
   send_request client (Request.PromptsGet params) (fun response ->
       match response with
       | Ok json -> (
@@ -222,10 +222,10 @@ let prompts_get (client : t) ~name ?arguments
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let tools_list (client : t) ?cursor
+let tools_list (client : t) ?cursor ?meta
     (callback : (Request.Tools.List.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Tools.List.cursor } in
+  let params = { Request.Tools.List.cursor; meta } in
   send_request client (Request.ToolsList params) (fun response ->
       match response with
       | Ok json -> (
@@ -234,10 +234,10 @@ let tools_list (client : t) ?cursor
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
 
-let tools_call (client : t) ~name ?arguments
+let tools_call (client : t) ~name ?arguments ?meta
     (callback : (Request.Tools.Call.result, string) result -> unit) :
     outgoing_message =
-  let params = { Request.Tools.Call.name; arguments } in
+  let params = { Request.Tools.Call.name; arguments; meta } in
   send_request client (Request.ToolsCall params) (fun response ->
       match response with
       | Ok json -> (

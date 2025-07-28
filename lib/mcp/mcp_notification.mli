@@ -8,7 +8,7 @@ open Mcp_types
 
 (** Sent after successful initialization handshake. *)
 module Initialized : sig
-  type params = unit [@@deriving yojson]
+  type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
 end
 
 (** Progress updates for long-running operations. *)
@@ -18,25 +18,25 @@ module Progress : sig
     progress : float;
     total : float option;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 (** Request cancellation notification. *)
 module Cancelled : sig
   type params = { request_id : request_id; reason : string option }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 (** Resource change notifications. *)
 module Resources : sig
   (** Specific resource content updated. *)
   module Updated : sig
-    type params = { uri : string } [@@deriving yojson]
+    type params = { uri : string } [@@deriving yojson { strict = false }]
   end
 
   (** Available resources list changed. *)
   module ListChanged : sig
-    type params = unit [@@deriving yojson]
+    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
   end
 end
 
@@ -44,7 +44,7 @@ end
 module Prompts : sig
   (** Available prompts list changed. *)
   module ListChanged : sig
-    type params = unit [@@deriving yojson]
+    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
   end
 end
 
@@ -52,7 +52,7 @@ end
 module Tools : sig
   (** Available tools list changed. *)
   module ListChanged : sig
-    type params = unit [@@deriving yojson]
+    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
   end
 end
 
@@ -60,7 +60,7 @@ end
 module Roots : sig
   (** Root directories list changed. *)
   module ListChanged : sig
-    type params = unit [@@deriving yojson]
+    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
   end
 end
 
@@ -71,18 +71,18 @@ module Message : sig
     logger : string option;
     data : Yojson.Safe.t;
   }
-  [@@deriving yojson]
+  [@@deriving yojson { strict = false }]
 end
 
 type t =
-  | Initialized
+  | Initialized of Initialized.params
   | Progress of Progress.params
   | Cancelled of Cancelled.params
   | ResourcesUpdated of Resources.Updated.params
-  | ResourcesListChanged
-  | PromptsListChanged
-  | ToolsListChanged
-  | RootsListChanged
+  | ResourcesListChanged of Resources.ListChanged.params
+  | PromptsListChanged of Prompts.ListChanged.params
+  | ToolsListChanged of Tools.ListChanged.params
+  | RootsListChanged of Roots.ListChanged.params
   | Message of Message.params
       (** Notification variants for all MCP notifications. *)
 
