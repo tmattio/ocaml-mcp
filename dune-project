@@ -20,7 +20,15 @@
  (synopsis "Model Context Protocol implementation for OCaml")
  (description
   "An OCaml implementation of the Model Context Protocol (MCP), providing both client and server libraries")
- (depends ocaml jsonrpc jsonschema yojson ppx_deriving_yojson logs re)
+ (depends
+  ocaml
+  jsonrpc
+  jsonschema
+  yojson
+  ppx_inline_test
+  ppx_deriving_yojson
+  logs
+  re)
  (tags
   (mcp protocol rpc)))
 
