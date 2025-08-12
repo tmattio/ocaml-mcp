@@ -1,0 +1,3 @@
+(executable
+ (name async_weather_server)
+ (libraries eio mcp mcp.sdk mcp-eio.sdk mcp-eio eio_main))
