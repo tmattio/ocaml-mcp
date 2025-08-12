@@ -25,7 +25,6 @@
   jsonrpc
   jsonschema
   yojson
-  ppx_inline_test
   ppx_deriving_yojson
   logs
   re
