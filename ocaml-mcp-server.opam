@@ -3,11 +3,11 @@ opam-version: "2.0"
 synopsis: "MCP server providing tools for OCaml development"
 description:
   "An MCP (Model Context Protocol) server that provides tools for OCaml development, including integration with dune build system."
-maintainer: ["Maintainer Name <maintainer@example.com>"]
-authors: ["Author Name <author@example.com>"]
-license: "LICENSE"
-homepage: "https://github.com/username/reponame"
-bug-reports: "https://github.com/username/reponame/issues"
+maintainer: ["Thibaut Mattio <thibaut.mattio@gmail.com>"]
+authors: ["Thibaut Mattio <thibaut.mattio@gmail.com>"]
+license: "ISC"
+homepage: "https://github.com/tmattio/ocaml-mcp"
+bug-reports: "https://github.com/tmattio/ocaml-mcp/issues"
 depends: [
   "dune" {>= "3.19"}
   "ocaml"
@@ -32,5 +32,5 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/username/reponame.git"
+dev-repo: "git+https://github.com/tmattio/ocaml-mcp.git"
 x-maintenance-intent: ["(latest)"]

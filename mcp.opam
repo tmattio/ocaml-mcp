@@ -3,12 +3,12 @@ opam-version: "2.0"
 synopsis: "Model Context Protocol implementation for OCaml"
 description:
   "An OCaml implementation of the Model Context Protocol (MCP), providing both client and server libraries"
-maintainer: ["Maintainer Name <maintainer@example.com>"]
-authors: ["Author Name <author@example.com>"]
-license: "LICENSE"
+maintainer: ["Thibaut Mattio <thibaut.mattio@gmail.com>"]
+authors: ["Thibaut Mattio <thibaut.mattio@gmail.com>"]
+license: "ISC"
 tags: ["mcp" "protocol" "rpc"]
-homepage: "https://github.com/username/reponame"
-bug-reports: "https://github.com/username/reponame/issues"
+homepage: "https://github.com/tmattio/ocaml-mcp"
+bug-reports: "https://github.com/tmattio/ocaml-mcp/issues"
 depends: [
   "dune" {>= "3.19"}
   "ocaml"
@@ -19,6 +19,7 @@ depends: [
   "ppx_deriving_yojson"
   "logs"
   "re"
+  "alcotest" {with-test}
   "odoc" {with-doc}
 ]
 build: [
@@ -35,5 +36,5 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/username/reponame.git"
+dev-repo: "git+https://github.com/tmattio/ocaml-mcp.git"
 x-maintenance-intent: ["(latest)"]

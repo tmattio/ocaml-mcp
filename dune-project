@@ -5,13 +5,13 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github tmattio/ocaml-mcp))
 
-(authors "Author Name <author@example.com>")
+(authors "Thibaut Mattio <thibaut.mattio@gmail.com>")
 
-(maintainers "Maintainer Name <maintainer@example.com>")
+(maintainers "Thibaut Mattio <thibaut.mattio@gmail.com>")
 
-(license LICENSE)
+(license ISC)
 
 (implicit_transitive_deps false)
 
