@@ -48,43 +48,43 @@ let register_tool (type args out err)
       (* Create a promise and run the tool execution in a separate fiber *)
       let promise, resolver = Eio.Promise.create () in
       Eio.Fiber.fork ~sw (fun () ->
-        let result = 
-          match T.execute ~sw ~env sdk args with
-          | Ok output ->
-              let json_output = T.Output.to_yojson output in
-              Ok
-                {
-                  Mcp.Request.Tools.Call.content =
-                    [
-                      Mcp.Types.Content.Text
-                        {
-                          type_ = "text";
-                          text = Yojson.Safe.to_string json_output;
-                          meta = None;
-                        };
-                    ];
-                  is_error = Some false;
-                  structured_content = Some json_output;
-                  meta = None;
-                }
-          | Error err ->
-              Ok
-                {
-                  Mcp.Request.Tools.Call.content =
-                    [
-                      Mcp.Types.Content.Text
-                        {
-                          type_ = "text";
-                          text = error_to_string (module T) err;
-                          meta = None;
-                        };
-                    ];
-                  is_error = Some true;
-                  structured_content = None;
-                  meta = None;
-                }
-        in
-        Eio.Promise.resolve resolver result);
+          let result =
+            match T.execute ~sw ~env sdk args with
+            | Ok output ->
+                let json_output = T.Output.to_yojson output in
+                Ok
+                  {
+                    Mcp.Request.Tools.Call.content =
+                      [
+                        Mcp.Types.Content.Text
+                          {
+                            type_ = "text";
+                            text = Yojson.Safe.to_string json_output;
+                            meta = None;
+                          };
+                      ];
+                    is_error = Some false;
+                    structured_content = Some json_output;
+                    meta = None;
+                  }
+            | Error err ->
+                Ok
+                  {
+                    Mcp.Request.Tools.Call.content =
+                      [
+                        Mcp.Types.Content.Text
+                          {
+                            type_ = "text";
+                            text = error_to_string (module T) err;
+                            meta = None;
+                          };
+                      ];
+                    is_error = Some true;
+                    structured_content = None;
+                    meta = None;
+                  }
+          in
+          Eio.Promise.resolve resolver result);
       promise)
 
 (** Register all ocaml-platform-sdk tools as async *)

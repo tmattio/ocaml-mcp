@@ -16,8 +16,8 @@ Test server info:
 List tools:
   $ mcp --socket 8080 list tools
   Tools (10):
-  - ocaml_project_structure: Return project layout, libraries, executables
   - ocaml_module_signature: Get the signature of an OCaml module from build artifacts
+  - ocaml_project_structure: Return project layout, libraries, executables
   - ocaml_type_at_pos: Get type of expression at specific file position in OCaml source files
   - dune_build_status: Get the current build status from dune, including any errors or warnings
   - ocaml_find_definition: Find where a symbol is defined

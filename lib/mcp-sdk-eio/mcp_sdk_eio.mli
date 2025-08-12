@@ -17,6 +17,16 @@
           async_tool_handler
     ]} *)
 
+(** {1 Type definitions} *)
+
+module type Json_converter = sig
+  type t
+
+  val to_yojson : t -> Yojson.Safe.t
+  val of_yojson : Yojson.Safe.t -> (t, string) result
+  val schema : unit -> Yojson.Safe.t
+end
+
 (** {1 Async Context} *)
 
 module Context : sig
@@ -33,11 +43,18 @@ module Server : sig
   type t
   (** Async server instance *)
 
+  type pagination_config = { page_size : int }
+
+  type mcp_logging_config = {
+    enabled : bool;
+    initial_level : Mcp.Types.LogLevel.t option;
+  }
+
   val create :
     server_info:Mcp.Types.ServerInfo.t ->
     ?capabilities:Mcp.Types.Capabilities.server ->
-    ?pagination_config:Mcp_sdk.Server.pagination_config ->
-    ?mcp_logging_config:Mcp_sdk.Server.mcp_logging_config ->
+    ?pagination_config:pagination_config ->
+    ?mcp_logging_config:mcp_logging_config ->
     unit ->
     t
   (** Create a new async server *)
@@ -51,7 +68,7 @@ module Server : sig
     ?description:string ->
     ?output_schema:Yojson.Safe.t ->
     ?annotations:Mcp.Types.Tool.annotation ->
-    ?args:(module Mcp_sdk.Server.Json_converter with type t = 'a) ->
+    ?args:(module Json_converter with type t = 'a) ->
     ('a ->
     Context.t ->
     (Mcp.Request.Tools.Call.result, string) result Eio.Promise.t) ->
@@ -97,7 +114,7 @@ module Server : sig
     string ->
     ?title:string ->
     ?description:string ->
-    ?args:(module Mcp_sdk.Server.Json_converter with type t = 'a) ->
+    ?args:(module Json_converter with type t = 'a) ->
     ('a ->
     Context.t ->
     (Mcp.Request.Prompts.Get.result, string) result Eio.Promise.t) ->
@@ -123,9 +140,9 @@ module Server : sig
 
   val setup_mcp_logging : t -> Mcp.Server.t -> unit
   (** Set up MCP protocol logging if enabled.
-      
-      This should be called after converting to MCP server if you want
-      to enable MCP logging notifications. *)
+
+      This should be called after converting to MCP server if you want to enable
+      MCP logging notifications. *)
 
   val run :
     sw:Eio.Switch.t ->
@@ -134,7 +151,7 @@ module Server : sig
     Mcp_eio.Connection.t ->
     unit
   (** Run the async server on a connection.
-      
+
       This automatically sets up MCP logging if enabled. *)
 end
 

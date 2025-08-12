@@ -63,12 +63,11 @@ let create_server ~sw ~env ~config =
   in
 
   (* Create async SDK server with pagination support *)
-  let mcp_logging_config =
-    Mcp_sdk.Server.
-      {
-        enabled = config.enable_mcp_logging;
-        initial_level = config.mcp_log_level;
-      }
+  let mcp_logging_config : Mcp_sdk_eio.Server.mcp_logging_config =
+    {
+      enabled = config.enable_mcp_logging;
+      initial_level = config.mcp_log_level;
+    }
   in
   let server =
     Mcp_sdk_eio.Server.create
