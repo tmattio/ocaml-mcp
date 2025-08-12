@@ -1,4 +1,4 @@
-(** OCaml MCP Server implementation using the SDK *)
+(** OCaml MCP Server implementation using the async SDK *)
 
 open Eio
 
@@ -62,7 +62,7 @@ let create_server ~sw ~env ~config =
       ()
   in
 
-  (* Create SDK server with pagination support *)
+  (* Create async SDK server with pagination support *)
   let mcp_logging_config =
     Mcp_sdk.Server.
       {
@@ -71,27 +71,23 @@ let create_server ~sw ~env ~config =
       }
   in
   let server =
-    Mcp_sdk.Server.create
+    Mcp_sdk_eio.Server.create
       ~server_info:{ name = "ocaml-mcp-server"; version = "0.1.0" }
       ~pagination_config:{ page_size = 10 }
         (* Demonstrate pagination with 10 items per page *)
       ~mcp_logging_config ()
   in
 
-  (* Register all tools using the adapter *)
+  (* Register all tools with async support *)
   Tool_adapter.register_all server sw env sdk;
 
   server
 
 let run ~sw ~env ~connection ~config =
-  Log.info (fun m -> m "Starting OCaml MCP Server");
+  Log.info (fun m -> m "Starting OCaml MCP Server (async)");
   let server = create_server ~sw ~env ~config in
-  let mcp_server = Mcp_sdk.Server.to_mcp_server server in
-
-  (* Set up MCP logging using SDK functionality *)
-  Mcp_sdk.Server.setup_mcp_logging server mcp_server;
-
-  Mcp_eio.Connection.serve ~sw connection mcp_server
+  (* Run the async server - it handles MCP logging automatically *)
+  Mcp_sdk_eio.Server.run ~sw ~env server connection
 
 let run_stdio ~env ~config =
   Log.info (fun m -> m "Starting MCP server in stdio mode");

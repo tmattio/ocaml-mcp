@@ -426,9 +426,37 @@ module Async_server = struct
     (* Convert to MCP server *)
     Mcp_sdk.Server.to_mcp_server sync_server
 
+  (** Set up MCP logging if enabled *)
+  let setup_mcp_logging t mcp_server =
+    if t.mcp_logging_config.enabled then (
+      (* Set initial MCP log level if specified *)
+      (match t.mcp_logging_config.initial_level with
+      | Some level ->
+          let ocaml_level = Mcp_sdk.Logging.map_mcp_to_logs_level level in
+          Logs.set_level ocaml_level
+      | None -> ());
+
+      (* Create notification sender *)
+      let send_notification notif =
+        let _msg = Mcp.Server.send_notification mcp_server notif in
+        ()
+      in
+
+      (* Add MCP notifier to existing reporter *)
+      let current_reporter = Logs.reporter () in
+      let combined_reporter =
+        Mcp_sdk.Logging.add_mcp_notifier ~send_notification current_reporter
+      in
+      Logs.set_reporter combined_reporter;
+      Logs_threaded.enable ();
+
+      Logs.info (fun m -> m "MCP logging enabled"))
+
   (** Run an async server with Eio *)
   let run ~sw ~env:_ t connection =
     let mcp_server = to_mcp_server ~sw t in
+    (* Set up MCP logging using SDK functionality *)
+    setup_mcp_logging t mcp_server;
     Mcp_eio.Connection.serve ~sw connection mcp_server
 end
 

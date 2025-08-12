@@ -22,8 +22,8 @@ val create_server :
   sw:Eio.Switch.t ->
   env:Eio_unix.Stdenv.base ->
   config:config ->
-  Mcp_sdk.Server.t
-(** [create_server ~sw ~env ~config] creates MCP server using the SDK.
+  Mcp_sdk_eio.Server.t
+(** [create_server ~sw ~env ~config] creates async MCP server using the SDK.
 
     Initializes Dune RPC polling based on config. *)
 

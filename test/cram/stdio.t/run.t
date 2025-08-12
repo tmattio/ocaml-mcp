@@ -9,8 +9,8 @@ List available tools:
   >   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
   >   echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
   > ) | ocaml-mcp-server --stdio --no-dune 2>/dev/null | tail -1 | jq -c '.result.tools[] | {name: .name}'
-  {"name":"ocaml_module_signature"}
   {"name":"ocaml_project_structure"}
+  {"name":"ocaml_module_signature"}
   {"name":"ocaml_type_at_pos"}
   {"name":"dune_build_status"}
   {"name":"ocaml_find_definition"}

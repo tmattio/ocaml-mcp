@@ -121,13 +121,21 @@ module Server : sig
       This creates a synchronous MCP server that internally awaits the async
       handlers' promises. *)
 
+  val setup_mcp_logging : t -> Mcp.Server.t -> unit
+  (** Set up MCP protocol logging if enabled.
+      
+      This should be called after converting to MCP server if you want
+      to enable MCP logging notifications. *)
+
   val run :
     sw:Eio.Switch.t ->
     env:Eio_unix.Stdenv.base ->
     t ->
     Mcp_eio.Connection.t ->
     unit
-  (** Run the async server on a connection *)
+  (** Run the async server on a connection.
+      
+      This automatically sets up MCP logging if enabled. *)
 end
 
 (** {1 Helper Functions} *)

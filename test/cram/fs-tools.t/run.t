@@ -9,7 +9,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Listening on unix:test.sock
   ocaml-mcp-server: [INFO] Server ready, waiting for connections...
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -19,7 +19,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -29,7 +29,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -39,7 +39,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -49,7 +49,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -59,7 +59,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -69,7 +69,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -79,7 +79,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -89,7 +89,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -99,7 +99,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -109,7 +109,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -119,7 +119,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -129,7 +129,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -139,7 +139,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -149,7 +149,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
@@ -159,7 +159,7 @@ Start the MCP server in the background
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended
   ocaml-mcp-server: [INFO] Accepted connection from unix:
-  ocaml-mcp-server: [INFO] Starting OCaml MCP Server
+  ocaml-mcp-server: [INFO] Starting OCaml MCP Server (async)
   ocaml-mcp-server: [INFO] MCP logging enabled
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
