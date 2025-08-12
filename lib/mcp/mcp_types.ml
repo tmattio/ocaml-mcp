@@ -8,42 +8,31 @@ module Protocol = struct
   let jsonrpc_version = "2.0"
 end
 
-module String_or_int () = struct
-  type t = String of string | Int of int [@@deriving yojson]
+type request_id = String of string | Int of int
 
-  let of_yojson = function
-    | `Int i -> Ok (Int i)
-    | `String s -> Ok (String s)
-    | json -> of_yojson json
+let request_id_of_yojson = function
+  | `Int i -> Ok (Int i)
+  | `String s -> Ok (String s)
+  | json ->
+      Error
+        ("request_id must be a string or integer, got: "
+       ^ Yojson.Safe.to_string json)
 
-  let to_yojson = function String s -> `String s | Int i -> `Int i
-end
+let request_id_to_yojson = function String s -> `String s | Int i -> `Int i
 
-include (
-  struct
-    module T = String_or_int ()
+type progress_token = String of string | Int of int
 
-    type request_id = T.t = String of string | Int of int
+let progress_token_of_yojson = function
+  | `Int i -> Ok (Int i)
+  | `String s -> Ok (String s)
+  | json ->
+      Error
+        ("progress_token must be a string or integer, got: "
+       ^ Yojson.Safe.to_string json)
 
-    let request_id_of_yojson = T.of_yojson
-    let request_id_to_yojson = T.to_yojson
-  end :
-    sig
-      type request_id = String of string | Int of int [@@deriving yojson]
-    end)
-
-include (
-  struct
-    module T = String_or_int ()
-
-    type progress_token = T.t = String of string | Int of int
-
-    let progress_token_of_yojson = T.of_yojson
-    let progress_token_to_yojson = T.to_yojson
-  end :
-    sig
-      type progress_token = String of string | Int of int [@@deriving yojson]
-    end)
+let progress_token_to_yojson = function
+  | String s -> `String s
+  | Int i -> `Int i
 
 type cursor = string [@@deriving yojson]
 
