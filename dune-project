@@ -28,7 +28,8 @@
   ppx_inline_test
   ppx_deriving_yojson
   logs
-  re)
+  re
+  (alcotest :with-test))
  (tags
   (mcp protocol rpc)))
 
