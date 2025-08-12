@@ -18,6 +18,7 @@ type outgoing_message =
   | Request of Id.t * string * Yojson.Safe.t option
   | Notification of string * Yojson.Safe.t option
   | Response of Id.t * (Yojson.Safe.t, Response.Error.t) result
+  | Batch_response of outgoing_message list
       (** Messages to send to remote endpoint. *)
 
 val parse_message : Packet.t -> (incoming_message, string) result

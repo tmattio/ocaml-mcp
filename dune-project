@@ -22,6 +22,7 @@
   "An OCaml implementation of the Model Context Protocol (MCP), providing both client and server libraries")
  (depends
   ocaml
+  logs
   jsonrpc
   jsonschema
   yojson

@@ -32,8 +32,9 @@ let accept_loop ~env ~sw ~config ~net addr =
     Eio.Fiber.fork ~sw (fun () ->
         try
           let transport = Mcp_eio.Socket.create_from_socket socket in
+          let clock = Eio.Stdenv.clock env in
           let connection =
-            Mcp_eio.Connection.create (module Mcp_eio.Socket) transport
+            Mcp_eio.Connection.create ~clock (module Mcp_eio.Socket) transport
           in
           handle_client ~sw ~env ~config connection
         with exn ->
@@ -53,8 +54,9 @@ let run_server config transport_config () =
       let stdin = Eio.Stdenv.stdin env in
       let stdout = Eio.Stdenv.stdout env in
       let transport = Mcp_eio.Stdio.create ~stdin ~stdout in
+      let clock = Eio.Stdenv.clock env in
       let connection =
-        Mcp_eio.Connection.create (module Mcp_eio.Stdio) transport
+        Mcp_eio.Connection.create ~clock (module Mcp_eio.Stdio) transport
       in
       handle_client ~sw ~env ~config connection
   | Socket port ->

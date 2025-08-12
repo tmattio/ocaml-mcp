@@ -59,7 +59,10 @@ let () =
   let stdin = Eio.Stdenv.stdin env in
   let stdout = Eio.Stdenv.stdout env in
   let transport = Mcp_eio.Stdio.create ~stdin ~stdout in
-  let connection = Mcp_eio.Connection.create (module Mcp_eio.Stdio) transport in
+  let clock = Eio.Stdenv.clock env in
+  let connection =
+    Mcp_eio.Connection.create ~clock (module Mcp_eio.Stdio) transport
+  in
 
   (* Convert SDK server to MCP server and run *)
   let mcp_server = Server.to_mcp_server server in

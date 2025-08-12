@@ -7,18 +7,19 @@ module Log = (val Logs.src_log src : Logs.LOG)
 
 type transport = {
   send : Jsonrpc.Packet.t -> unit;
-  recv : unit -> Jsonrpc.Packet.t option;
+  recv : ?timeout:float -> unit -> Jsonrpc.Packet.t option;
   close : unit -> unit;
 }
 
 type t = { transport : transport }
 
-let create (type a) (module T : Transport.S with type t = a) (transport : a) =
+let create ~clock (type a) (module T : Transport.S with type t = a)
+    (transport : a) =
   {
     transport =
       {
         send = T.send transport;
-        recv = (fun () -> T.recv transport);
+        recv = (fun ?timeout () -> T.recv transport ~clock ?timeout ());
         close = (fun () -> T.close transport);
       };
   }
@@ -27,8 +28,8 @@ let send t outgoing_msg =
   let packet = Mcp.Protocol.outgoing_to_message outgoing_msg in
   t.transport.send packet
 
-let recv t =
-  match t.transport.recv () with
+let recv t ?timeout () =
+  match t.transport.recv ?timeout () with
   | None -> None
   | Some packet -> (
       match Mcp.Protocol.parse_message packet with
@@ -42,7 +43,7 @@ let close t = t.transport.close ()
 
 let serve ~sw:_ t server =
   let rec loop () =
-    match recv t with
+    match recv t () with
     | None ->
         Log.info (fun m -> m "Client disconnected");
         () (* EOF, exit loop *)
@@ -76,7 +77,7 @@ let serve ~sw:_ t server =
 
 let run_client ~sw:_ t client =
   let rec loop () =
-    match recv t with
+    match recv t () with
     | None -> () (* EOF, exit loop *)
     | Some msg ->
         (match Mcp.Client.handle_message client msg with

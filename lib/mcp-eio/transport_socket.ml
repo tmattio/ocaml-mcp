@@ -34,7 +34,14 @@ let send t packet =
     let (Stream_socket.Socket socket) = t.socket in
     Framing.write_packet (socket :> _ Flow.sink) packet
 
-let recv t = if t.closed then None else Framing.read_packet t.buf_reader
+let recv t ~clock ?timeout () =
+  if t.closed then None
+  else
+    match timeout with
+    | None -> Framing.read_packet t.buf_reader
+    | Some duration ->
+        Eio.Time.with_timeout_exn clock duration (fun () ->
+            Framing.read_packet t.buf_reader)
 
 let close t =
   if not t.closed then (

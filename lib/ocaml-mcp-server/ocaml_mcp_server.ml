@@ -100,8 +100,9 @@ let run_stdio ~env ~config =
     Mcp_eio.Stdio.create ~stdin:(Eio.Stdenv.stdin env)
       ~stdout:(Eio.Stdenv.stdout env)
   in
+  let clock = Eio.Stdenv.clock env in
   let conn =
-    Mcp_eio.Connection.create
+    Mcp_eio.Connection.create ~clock
       (module Mcp_eio.Stdio : Mcp_eio.Transport.S with type t = _)
       transport
   in

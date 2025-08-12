@@ -263,7 +263,7 @@ end
 (** Connection keep-alive. *)
 module Ping : sig
   type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
-  type result = unit [@@deriving yojson { strict = false }]
+  type result = OnlyMetaParams.t [@@deriving yojson { strict = false }]
 end
 
 type t =

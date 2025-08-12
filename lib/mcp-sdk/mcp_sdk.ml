@@ -237,35 +237,54 @@ module Server = struct
   (* Helper function for tools with no arguments *)
   let tool_no_args t name ?title ?description ?output_schema ?annotations
       handler =
-    let typed_handler json_opt ctx =
-      (* For unit type, we need to pass null, not empty object *)
-      let _ = json_opt in
-      (* ignore the input *)
-      let result = handler () ctx in
-      (* Validate output if schema provided *)
-      match (result, output_schema) with
-      | Ok res, Some schema
-        when res.Mcp.Request.Tools.Call.structured_content <> None -> (
-          let content =
-            Option.get res.Mcp.Request.Tools.Call.structured_content
-          in
-          let basic_content = Yojson.Safe.to_basic content in
-          let basic_schema = Yojson.Safe.to_basic schema in
+    (* Validate output schema if provided *)
+    let output_schema_error =
+      match output_schema with
+      | Some out_schema -> (
+          let basic_out_schema = Yojson.Safe.to_basic out_schema in
           match
-            Jsonschema.create_validator_from_json ~schema:basic_schema ()
+            Jsonschema.create_validator_from_json ~schema:basic_out_schema ()
           with
           | Error err ->
-              Error
-                (Format.asprintf "Invalid output schema: %a"
+              Some
+                (Format.asprintf "Invalid output schema for tool '%s': %a" name
                    Jsonschema.pp_compile_error err)
-          | Ok validator -> (
-              match Jsonschema.validate validator basic_content with
-              | Ok () -> result
-              | Error error ->
+          | Ok _ -> None)
+      | None -> None
+    in
+    let typed_handler json_opt ctx =
+      (* First check if there was a schema validation error during registration *)
+      match output_schema_error with
+      | Some err -> Error err
+      | None -> (
+          (* For unit type, we need to pass null, not empty object *)
+          let _ = json_opt in
+          (* ignore the input *)
+          let result = handler () ctx in
+          (* Validate output if schema provided *)
+          match (result, output_schema) with
+          | Ok res, Some schema
+            when res.Mcp.Request.Tools.Call.structured_content <> None -> (
+              let content =
+                Option.get res.Mcp.Request.Tools.Call.structured_content
+              in
+              let basic_content = Yojson.Safe.to_basic content in
+              let basic_schema = Yojson.Safe.to_basic schema in
+              match
+                Jsonschema.create_validator_from_json ~schema:basic_schema ()
+              with
+              | Error err ->
                   Error
-                    (Printf.sprintf "Output validation failed: %s"
-                       (Jsonschema.Validation_error.to_string error))))
-      | _ -> result
+                    (Format.asprintf "Invalid output schema: %a"
+                       Jsonschema.pp_compile_error err)
+              | Ok validator -> (
+                  match Jsonschema.validate validator basic_content with
+                  | Ok () -> result
+                  | Error error ->
+                      Error
+                        (Printf.sprintf "Output validation failed: %s"
+                           (Jsonschema.Validation_error.to_string error))))
+          | _ -> result)
     in
     let th : tool_handler =
       {
@@ -302,60 +321,100 @@ module Server = struct
     | Some (module Args : Json_converter with type t = a) ->
         let schema = Args.schema () in
         let basic_schema = Yojson.Safe.to_basic schema in
-        let typed_handler json_opt ctx =
-          let json = Option.value json_opt ~default:(`Assoc []) in
-          (* Validate input against schema first *)
-          let basic_json = Yojson.Safe.to_basic json in
+        (* Validate that the schema itself is valid JSON Schema *)
+        let input_schema_error =
           match
             Jsonschema.create_validator_from_json ~schema:basic_schema ()
           with
           | Error err ->
-              Error
-                (Format.asprintf "Invalid input schema: %a"
+              Some
+                (Format.asprintf "Invalid input schema for tool '%s': %a" name
                    Jsonschema.pp_compile_error err)
-          | Ok validator -> (
-              match Jsonschema.validate validator basic_json with
-              | Error error ->
+          | Ok _ -> None
+        in
+        (* Validate output schema if provided *)
+        let output_schema_error =
+          match output_schema with
+          | Some out_schema -> (
+              let basic_out_schema = Yojson.Safe.to_basic out_schema in
+              match
+                Jsonschema.create_validator_from_json ~schema:basic_out_schema
+                  ()
+              with
+              | Error err ->
+                  Some
+                    (Format.asprintf "Invalid output schema for tool '%s': %a"
+                       name Jsonschema.pp_compile_error err)
+              | Ok _ -> None)
+          | None -> None
+        in
+        (* If there's a schema validation error, create a handler that always returns the error *)
+        let schema_error =
+          match (input_schema_error, output_schema_error) with
+          | Some err, _ -> Some err
+          | _, Some err -> Some err
+          | None, None -> None
+        in
+        let typed_handler json_opt ctx =
+          (* First check if there was a schema validation error during registration *)
+          match schema_error with
+          | Some err -> Error err
+          | None -> (
+              let json = Option.value json_opt ~default:(`Assoc []) in
+              (* Validate input against schema first *)
+              let basic_json = Yojson.Safe.to_basic json in
+              match
+                Jsonschema.create_validator_from_json ~schema:basic_schema ()
+              with
+              | Error err ->
                   Error
-                    (Printf.sprintf "Input validation failed: %s"
-                       (Jsonschema.Validation_error.to_string error))
-              | Ok () -> (
-                  match Args.of_yojson json with
-                  | Ok args -> (
-                      (* Call the handler *)
-                      let result = handler args ctx in
-                      (* Validate output if schema provided *)
-                      match (result, output_schema) with
-                      | Ok res, Some schema
-                        when res.Mcp.Request.Tools.Call.structured_content
-                             <> None -> (
-                          let content =
-                            Option.get
-                              res.Mcp.Request.Tools.Call.structured_content
-                          in
-                          let basic_content = Yojson.Safe.to_basic content in
-                          let basic_schema = Yojson.Safe.to_basic schema in
-                          match
-                            Jsonschema.create_validator_from_json
-                              ~schema:basic_schema ()
-                          with
-                          | Error err ->
-                              Error
-                                (Format.asprintf "Invalid output schema: %a"
-                                   Jsonschema.pp_compile_error err)
-                          | Ok validator -> (
+                    (Format.asprintf "Invalid input schema: %a"
+                       Jsonschema.pp_compile_error err)
+              | Ok validator -> (
+                  match Jsonschema.validate validator basic_json with
+                  | Error error ->
+                      Error
+                        (Printf.sprintf "Input validation failed: %s"
+                           (Jsonschema.Validation_error.to_string error))
+                  | Ok () -> (
+                      match Args.of_yojson json with
+                      | Ok args -> (
+                          (* Call the handler *)
+                          let result = handler args ctx in
+                          (* Validate output if schema provided *)
+                          match (result, output_schema) with
+                          | Ok res, Some schema
+                            when res.Mcp.Request.Tools.Call.structured_content
+                                 <> None -> (
+                              let content =
+                                Option.get
+                                  res.Mcp.Request.Tools.Call.structured_content
+                              in
+                              let basic_content =
+                                Yojson.Safe.to_basic content
+                              in
+                              let basic_schema = Yojson.Safe.to_basic schema in
                               match
-                                Jsonschema.validate validator basic_content
+                                Jsonschema.create_validator_from_json
+                                  ~schema:basic_schema ()
                               with
-                              | Ok () -> result
-                              | Error error ->
+                              | Error err ->
                                   Error
-                                    (Printf.sprintf
-                                       "Output validation failed: %s"
-                                       (Jsonschema.Validation_error.to_string
-                                          error))))
-                      | _ -> result)
-                  | Error e -> Error ("Failed to parse arguments: " ^ e)))
+                                    (Format.asprintf "Invalid output schema: %a"
+                                       Jsonschema.pp_compile_error err)
+                              | Ok validator -> (
+                                  match
+                                    Jsonschema.validate validator basic_content
+                                  with
+                                  | Ok () -> result
+                                  | Error error ->
+                                      Error
+                                        (Printf.sprintf
+                                           "Output validation failed: %s"
+                                           (Jsonschema.Validation_error
+                                            .to_string error))))
+                          | _ -> result)
+                      | Error e -> Error ("Failed to parse arguments: " ^ e))))
         in
         let th : tool_handler =
           {

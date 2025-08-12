@@ -108,19 +108,20 @@ let handle_request (server : t) (id : Jsonrpc.Id.t) (request : Request.t) :
               ~message:"Server already initialized" ()
           else (
             server.client_capabilities <- Some params.capabilities;
-            let result =
-              {
-                Request.Initialize.protocol_version = params.protocol_version;
-                capabilities = server.server_capabilities;
-                server_info = server.server_info;
-                instructions = None;
-                meta = None;
-              }
-            in
             match server.handler.on_initialize params with
-            | Ok _ ->
+            | Ok custom_result ->
                 server.initialized <- true;
-                response_to_outgoing ~id (Request.Initialize result)
+                (* Merge custom result with defaults, ensuring protocol version and capabilities are preserved *)
+                let merged_result =
+                  {
+                    custom_result with
+                    Request.Initialize.protocol_version =
+                      params.protocol_version;
+                    capabilities = server.server_capabilities;
+                    server_info = server.server_info;
+                  }
+                in
+                response_to_outgoing ~id (Request.Initialize merged_result)
             | Error msg ->
                 error_to_outgoing ~id ~code:ErrorCode.internal_error
                   ~message:msg ())
@@ -223,18 +224,33 @@ let handle_request (server : t) (id : Jsonrpc.Id.t) (request : Request.t) :
                 ()))
 
 let handle_notification (server : t) (notification : Notification.t) : unit =
-  match notification with
-  | Notification.Initialized params ->
-      server.notification_handler.on_initialized params
-  | Notification.Progress params ->
-      server.notification_handler.on_progress params
-  | Notification.Cancelled params ->
-      server.notification_handler.on_cancelled params
-  | Notification.RootsListChanged params ->
-      server.notification_handler.on_roots_list_changed params
-  | _ -> () (* Server doesn't handle other notifications *)
+  (* Extract and validate the meta field from the notification *)
+  let meta_to_validate =
+    match notification with
+    | Notification.Initialized params -> params.meta
+    | Notification.Progress _params -> None (* Progress doesn't have meta *)
+    | Notification.Cancelled _params -> None (* Cancelled doesn't have meta *)
+    | Notification.RootsListChanged params -> params.meta
+    | _ -> None
+  in
+  match Meta.validate meta_to_validate with
+  | Error msg ->
+      (* Log error, but don't crash since notifications are fire-and-forget *)
+      Logs.err (fun m -> m "Invalid meta in notification: %s" msg)
+  | Ok () -> (
+      (* Proceed with normal notification handling *)
+      match notification with
+      | Notification.Initialized params ->
+          server.notification_handler.on_initialized params
+      | Notification.Progress params ->
+          server.notification_handler.on_progress params
+      | Notification.Cancelled params ->
+          server.notification_handler.on_cancelled params
+      | Notification.RootsListChanged params ->
+          server.notification_handler.on_roots_list_changed params
+      | _ -> () (* Server doesn't handle other notifications *))
 
-let handle_message (server : t) (msg : incoming_message) :
+let rec handle_message (server : t) (msg : incoming_message) :
     outgoing_message option =
   match msg with
   | Request (id, request) ->
@@ -250,7 +266,13 @@ let handle_message (server : t) (msg : incoming_message) :
       handle_notification server notification;
       None
   | Response _ -> None (* Server doesn't handle responses *)
-  | Batch_request _ | Batch_response _ -> None (* TODO: Handle batch messages *)
+  | Batch_request requests ->
+      (* Process each request in the batch and collect responses *)
+      let responses =
+        List.filter_map (fun req -> handle_message server req) requests
+      in
+      if responses = [] then None else Some (Batch_response responses)
+  | Batch_response _ -> None (* Server ignores incoming batch responses *)
 
 let send_notification (_server : t) (notification : Notification.t) :
     outgoing_message =
@@ -263,7 +285,25 @@ let get_client_capabilities (server : t) : Capabilities.client option =
 
 let default_handler : handler =
   {
-    on_initialize = (fun _ -> Error "Not implemented");
+    on_initialize =
+      (fun _params ->
+        Ok
+          {
+            Request.Initialize.protocol_version =
+              Protocol.default_negotiated_version;
+            capabilities =
+              {
+                experimental = None;
+                logging = None;
+                completions = None;
+                prompts = None;
+                resources = None;
+                tools = None;
+              };
+            server_info = { name = "default-server"; version = "1.0.0" };
+            instructions = None;
+            meta = None;
+          });
     on_resources_list =
       (fun params ->
         (* Echo the metadata back in the response *)
@@ -325,7 +365,7 @@ let default_handler : handler =
     on_completion_complete = (fun _ -> Error "Not implemented");
     on_roots_list =
       (fun params -> Ok { Request.Roots.List.roots = []; meta = params.meta });
-    on_ping = (fun _ -> Ok ());
+    on_ping = (fun params -> Ok { meta = params.meta });
   }
 
 let default_notification_handler : notification_handler =

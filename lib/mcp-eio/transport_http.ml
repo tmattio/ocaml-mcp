@@ -101,16 +101,28 @@ let send t packet =
           with exn ->
             Printf.eprintf "HTTP request error: %s\n" (Printexc.to_string exn))
 
-let recv t =
+let recv t ~clock ?timeout () =
   if t.closed then None
   else
-    match t.mode with
-    | Server { request_queue; _ } ->
-        (* Take from the request queue *)
-        Stream.take_nonblocking request_queue
-    | Client { response_queue; _ } ->
-        (* Take from the response queue *)
-        Stream.take_nonblocking response_queue
+    match timeout with
+    | None -> (
+        match t.mode with
+        | Server { request_queue; _ } ->
+            (* Take from the request queue *)
+            Stream.take_nonblocking request_queue
+        | Client { response_queue; _ } ->
+            (* Take from the response queue *)
+            Stream.take_nonblocking response_queue)
+    | Some duration -> (
+        match t.mode with
+        | Server { request_queue; _ } ->
+            (* Take from the request queue with timeout *)
+            Eio.Time.with_timeout_exn clock duration (fun () ->
+                Some (Stream.take request_queue))
+        | Client { response_queue; _ } ->
+            (* Take from the response queue with timeout *)
+            Eio.Time.with_timeout_exn clock duration (fun () ->
+                Some (Stream.take response_queue)))
 
 let close t = t.closed <- true
 

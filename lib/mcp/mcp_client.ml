@@ -131,7 +131,7 @@ let handle_request (client : t) (id : Jsonrpc.Id.t) (request : Request.t) :
           in
           Some (Response (id, Error error)))
 
-let handle_message (client : t) (msg : incoming_message) :
+let rec handle_message (client : t) (msg : incoming_message) :
     outgoing_message option =
   match msg with
   | Request (id, request) -> handle_request client id request
@@ -141,7 +141,11 @@ let handle_message (client : t) (msg : incoming_message) :
   | Response (id, response) ->
       handle_response client id response;
       None
-  | Batch_request _ | Batch_response _ -> None (* TODO: Handle batch messages *)
+  | Batch_request _ -> None (* Client ignores incoming batch requests *)
+  | Batch_response responses ->
+      (* Process each response in the batch *)
+      List.iter (fun resp -> ignore (handle_message client resp)) responses;
+      None
 
 let initialize (client : t) ~protocol_version
     (callback : (Request.Initialize.result, string) result -> unit) :

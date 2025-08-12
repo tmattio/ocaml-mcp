@@ -19,5 +19,13 @@ let send t packet =
   if t.closed then failwith "Transport is closed"
   else Stream.add t.send_stream packet
 
-let recv t = if t.closed then None else Stream.take_nonblocking t.recv_stream
+let recv t ~clock ?timeout () =
+  if t.closed then None
+  else
+    match timeout with
+    | None -> Stream.take_nonblocking t.recv_stream
+    | Some duration ->
+        Eio.Time.with_timeout_exn clock duration (fun () ->
+            Some (Stream.take t.recv_stream))
+
 let close t = if not t.closed then t.closed <- true

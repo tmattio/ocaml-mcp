@@ -88,7 +88,7 @@ let connect ~sw ~connection ~config =
 
   (* Process messages until initialized *)
   let rec wait_for_init () =
-    match Mcp_eio.Connection.recv connection with
+    match Mcp_eio.Connection.recv connection () with
     | None -> failwith "Connection closed during initialization"
     | Some msg ->
         (match Mcp.Client.handle_message client msg with
@@ -131,7 +131,7 @@ let request t req =
   let rec wait_for_response () =
     if Promise.is_resolved promise then ()
     else
-      match Mcp_eio.Connection.recv t.connection with
+      match Mcp_eio.Connection.recv t.connection () with
       | None -> failwith "Connection closed while waiting for response"
       | Some msg ->
           (match Mcp.Client.handle_message t.client msg with
@@ -234,19 +234,22 @@ let connect_transport ~env ~sw config =
       let stdin = Eio.Stdenv.stdin env in
       let stdout = Eio.Stdenv.stdout env in
       let transport = Mcp_eio.Stdio.create ~stdin ~stdout in
-      Mcp_eio.Connection.create (module Mcp_eio.Stdio) transport
+      let clock = Eio.Stdenv.clock env in
+      Mcp_eio.Connection.create ~clock (module Mcp_eio.Stdio) transport
   | Socket port ->
       (* Connect to TCP socket *)
       let net = Eio.Stdenv.net env in
       let addr = `Tcp (Eio.Net.Ipaddr.V4.loopback, port) in
       let transport = Mcp_eio.Socket.create_client ~net ~sw addr in
-      Mcp_eio.Connection.create (module Mcp_eio.Socket) transport
+      let clock = Eio.Stdenv.clock env in
+      Mcp_eio.Connection.create ~clock (module Mcp_eio.Socket) transport
   | Pipe path ->
       (* Connect to Unix domain socket *)
       let net = Eio.Stdenv.net env in
       let addr = `Unix path in
       let transport = Mcp_eio.Socket.create_client ~net ~sw addr in
-      Mcp_eio.Connection.create (module Mcp_eio.Socket) transport
+      let clock = Eio.Stdenv.clock env in
+      Mcp_eio.Connection.create ~clock (module Mcp_eio.Socket) transport
 
 let with_client ~transport_config f =
   run @@ fun env ->

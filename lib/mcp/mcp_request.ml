@@ -341,10 +341,7 @@ end
 
 module Ping = struct
   type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
-  type result = unit
-
-  let result_to_yojson () = `Assoc []
-  let result_of_yojson _ = Ok ()
+  type result = OnlyMetaParams.t [@@deriving yojson { strict = false }]
 end
 
 type t =

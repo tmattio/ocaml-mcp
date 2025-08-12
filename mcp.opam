@@ -12,6 +12,7 @@ bug-reports: "https://github.com/tmattio/ocaml-mcp/issues"
 depends: [
   "dune" {>= "3.19"}
   "ocaml"
+  "logs"
   "jsonrpc"
   "jsonschema"
   "yojson"

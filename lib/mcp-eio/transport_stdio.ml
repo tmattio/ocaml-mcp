@@ -31,16 +31,23 @@ let send t packet =
     Log.debug (fun m -> m "Sending packet via stdio");
     Framing.write_packet t.stdout packet)
 
-let recv t =
+let recv t ~clock ?timeout () =
   if t.closed then (
     Log.debug (fun m -> m "Transport is closed, returning None");
     None)
-  else (
-    Log.debug (fun m -> m "Reading packet from stdio");
-    let result = Framing.read_packet t.buf_reader in
-    (match result with
-    | None -> Log.debug (fun m -> m "Read returned None (EOF)")
-    | Some _ -> Log.debug (fun m -> m "Successfully read packet"));
-    result)
+  else
+    match timeout with
+    | None ->
+        Log.debug (fun m -> m "Reading packet from stdio");
+        let result = Framing.read_packet t.buf_reader in
+        (match result with
+        | None -> Log.debug (fun m -> m "Read returned None (EOF)")
+        | Some _ -> Log.debug (fun m -> m "Successfully read packet"));
+        result
+    | Some duration ->
+        Log.debug (fun m ->
+            m "Reading packet from stdio with timeout %f" duration);
+        Eio.Time.with_timeout_exn clock duration (fun () ->
+            Framing.read_packet t.buf_reader)
 
 let close t = t.closed <- true

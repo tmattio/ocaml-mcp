@@ -7,18 +7,23 @@
 type t
 (** Connection instance managing transport and message handling. *)
 
-val create : (module Transport.S with type t = 'a) -> 'a -> t
-(** [create transport_module transport_instance] creates connection.
+val create :
+  clock:_ Eio.Time.clock -> (module Transport.S with type t = 'a) -> 'a -> t
+(** [create ~clock transport_module transport_instance] creates connection.
 
-    Wraps any transport implementation with connection management. *)
+    Wraps any transport implementation with connection management.
+    @param clock The clock to use for timing operations *)
 
 val send : t -> Mcp.Protocol.outgoing_message -> unit
 (** [send t msg] sends outgoing message through transport. *)
 
-val recv : t -> Mcp.Protocol.incoming_message option
-(** [recv t] receives and parses next incoming message.
+val recv : t -> ?timeout:float -> unit -> Mcp.Protocol.incoming_message option
+(** [recv t ?timeout ()] receives and parses next incoming message.
 
-    Returns [None] on EOF or parse error. *)
+    Returns [None] on EOF or parse error.
+    @param timeout Optional timeout in seconds
+    @raise Eio.Time.Timeout if timeout is specified and the operation times out.
+*)
 
 val close : t -> unit
 (** [close t] closes connection and underlying transport. *)

@@ -48,6 +48,7 @@ type outgoing_message =
   | Request of Id.t * string * Yojson.Safe.t option
   | Notification of string * Yojson.Safe.t option
   | Response of Id.t * (Yojson.Safe.t, Response.Error.t) result
+  | Batch_response of outgoing_message list
 
 let parse_request (req : Request.t) : (incoming_message, string) result =
   let params = structured_to_yojson req.params in
@@ -116,11 +117,21 @@ let make_response ~id result : Packet.t =
 let make_error_response ~id error : Packet.t =
   Packet.Response { Response.id; result = Error error }
 
-let outgoing_to_message = function
+let rec outgoing_to_message = function
   | Request (id, method_, params) -> make_request ~id method_ params
   | Notification (method_, params) -> make_notification method_ params
   | Response (id, Ok result) -> make_response ~id result
   | Response (id, Error error) -> make_error_response ~id error
+  | Batch_response responses ->
+      let packets =
+        List.map
+          (fun msg ->
+            match outgoing_to_message msg with
+            | Packet.Response r -> r
+            | _ -> failwith "Invalid message type in batch response")
+          responses
+      in
+      Packet.Batch_response packets
 
 let request_to_outgoing ~id (request : Mcp_request.t) : outgoing_message =
   let method_ = Mcp_request.method_name request in
