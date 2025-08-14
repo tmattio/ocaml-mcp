@@ -15,7 +15,7 @@ build:
 clean:
 	dune clean
 
-test: init
+test: 
 	dune runtest
 
 # Help target
