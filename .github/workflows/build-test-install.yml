@@ -1,0 +1,31 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5
+
+      - name: Initialize submodules and dependencies
+        run: opam exec -- make init
+
+      - name: Build
+        run: opam exec -- make build
+
+      - name: Run tests
+        run: opam exec -- make test
+
+      - name: Test install
+        run: opam exec -- make install

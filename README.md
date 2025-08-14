@@ -18,10 +18,18 @@ This repository contains:
 - **OCaml Development Server**
   - **ocaml-mcp-server** - Ready-to-use MCP server with OCaml development tools
 
+
+## Building
+
+```bash
+make init
+make build
+```
+
 ## Installation
 
 ```bash
-opam install ocaml-mcp-server
+make install
 ```
 
 ## Usage
