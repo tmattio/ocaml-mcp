@@ -14,7 +14,6 @@ depends: [
   "mcp"
   "mcp-eio"
   "eio_main"
-  "ocaml-platform-sdk"
   "cmdliner"
   "odoc" {with-doc}
 ]

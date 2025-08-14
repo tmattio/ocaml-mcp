@@ -51,4 +51,4 @@
  (synopsis "MCP server providing tools for OCaml development")
  (description
   "An MCP (Model Context Protocol) server that provides tools for OCaml development, including integration with dune build system.")
- (depends ocaml mcp mcp-eio eio_main ocaml-platform-sdk cmdliner))
+ (depends ocaml mcp mcp-eio eio_main cmdliner))
