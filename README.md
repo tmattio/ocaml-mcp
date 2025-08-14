@@ -29,7 +29,7 @@ make build
 ## Installation
 
 ```bash
-opam install ocaml-mcp-server
+make install
 ```
 
 ## Usage

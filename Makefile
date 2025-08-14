@@ -1,7 +1,7 @@
 VENDORED_DIR=vendor
 VENDORED_TARGS=$(wildcard $(VENDORED_DIR)/*/)
 
-.PHONY: all build clean test init
+.PHONY: all init build clean test install
 
 all: init build test
 
@@ -18,11 +18,5 @@ clean:
 test: 
 	dune runtest
 
-# Help target
-help:
-	@echo "Available targets:"
-	@echo "  init         - Initialize/update submodules and dependencies"
-	@echo "  build        - Build the project using dune"
-	@echo "  clean        - Clean build artifacts"
-	@echo "  test         - Run tests with dune runtest"
-	@echo "  help         - Show this help message"
+install: init
+	opam install $(VENDORED_TARGS) .

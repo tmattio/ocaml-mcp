@@ -26,3 +26,6 @@ jobs:
 
       - name: Run tests
         run: opam exec -- make test
+
+      - name: Test install
+        run: opam exec -- make install
