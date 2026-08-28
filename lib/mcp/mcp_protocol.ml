@@ -11,14 +11,6 @@ let rec json_to_yojson (json : Json.t) : Yojson.Safe.t =
   | `List lst -> `List (List.map json_to_yojson lst)
   | `Null -> `Null
   | `String s -> `String s
-  | `Tuple lst ->
-      `List (List.map json_to_yojson lst) (* Convert tuple to list *)
-  | `Variant (name, opt) -> (
-      (* Convert variant to an object *)
-      match opt with
-      | None -> `Assoc [ ("variant", `String name) ]
-      | Some v ->
-          `Assoc [ ("variant", `String name); ("value", json_to_yojson v) ])
 
 (* Convert jsonrpc types to Yojson *)
 let structured_to_yojson (s : Structured.t option) : Yojson.Safe.t option =
