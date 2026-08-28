@@ -15,7 +15,7 @@ depends: [
   "logs"
   "jsonrpc"
   "jsonschema"
-  "yojson"
+  "yojson" {>= "3.0.0"}
   "ppx_deriving_yojson"
   "logs"
   "re"
