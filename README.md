@@ -13,6 +13,7 @@ This repository contains:
 - **Protocol Libraries** - Build your own MCP servers and clients in OCaml
   - **mcp** - Core protocol implementation (types, client, server)
   - **mcp-eio** - Transport layer (stdio, socket, memory, HTTP)
+- Streamable HTTP client (HTTPS via a pluggable TLS wrapper, custom headers, `Mcp-Session-Id` tracking, `MCP-Protocol-Version` echo, `text/event-stream` responses)
   - **mcp-sdk** - High-level SDK for building MCP servers and clients
 
 - **OCaml Development Server**
@@ -65,6 +66,7 @@ The server integrates with Merlin, Dune RPC, ocamlformat, and other OCaml Platfo
 - Client/server request-response patterns  
 - Notification handling
 - Transport layer (stdio, socket, memory, HTTP)
+- Streamable HTTP client (HTTPS via a pluggable TLS wrapper, custom headers, `Mcp-Session-Id` tracking, `MCP-Protocol-Version` echo, `text/event-stream` responses)
 - Server-to-client request handling (sampling, elicitation, roots)
 - High-level SDK with type-safe tool/resource/prompt registration
 - Dynamic JSON schema generation from OCaml types
@@ -82,7 +84,7 @@ The server integrates with Merlin, Dune RPC, ocamlformat, and other OCaml Platfo
   - **Cancellation** - Currently not supported. The protocol defines `$/cancel` notifications, but implementing proper cancellation requires thread-safe cancellation tokens and checking cancellation status during long operations
   - Progress tracking (basic support implemented)
 - Argument completion support
-- WebSocket and SSE transports
+- WebSocket transport; server-initiated SSE streams (GET) in the HTTP transport
 - Some client helper functions (resources/subscribe, completion/complete, logging/setLevel, ping)
 
 ## Contributing

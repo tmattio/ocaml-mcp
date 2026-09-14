@@ -1,3 +1,7 @@
 (tests
  (names test_mcp)
  (libraries mcp alcotest))
+
+(tests
+ (names test_sse)
+ (libraries mcp-eio alcotest))

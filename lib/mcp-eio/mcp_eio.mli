@@ -17,7 +17,9 @@
 
     {!Connection} - Connection lifecycle management
 
-    {!Framing} - JSON-RPC message framing *)
+    {!Framing} - JSON-RPC message framing
+
+    {!Sse} - Server-Sent Events stream parsing *)
 
 module Transport = Transport
 module Stdio = Transport_stdio
@@ -26,3 +28,4 @@ module Memory = Transport_memory
 module Http = Transport_http
 module Connection = Connection
 module Framing = Framing
+module Sse = Sse
