@@ -7,44 +7,55 @@ let description =
    result includes Merlin diagnostics."
 
 module Args = struct
-  type t = {
-    file_path : string;
-    offset : int option; [@default None]
-    limit : int option; [@default None]
-  }
-  [@@deriving yojson]
+  type t = { file_path : string; offset : int option; limit : int option }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun file_path offset limit ->
+        ({ file_path; offset; limit } : t))
+    |> Jsont.Object.mem "file_path" Jsont.string ~enc:(fun (v : t) ->
+        v.file_path)
+    |> Jsont.Object.mem "offset"
+         (Jsont.option Mcp.Types.Json_codec.integer_json)
+         ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : t) ->
+           v.offset)
+    |> Jsont.Object.mem "limit" (Jsont.option Mcp.Types.Json_codec.integer_json)
+         ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : t) -> v.limit)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc
+          Mcp.Json.object_
             [
               ( "file_path",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "string");
-                    ("description", `String "The path to the file to read");
+                    ("type", Mcp.Json.string "string");
+                    ( "description",
+                      Mcp.Json.string "The path to the file to read" );
                   ] );
               ( "offset",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "integer");
+                    ("type", Mcp.Json.string "integer");
                     ( "description",
-                      `String
+                      Mcp.Json.string
                         "Optional: The 1-based line number to start reading \
                          from" );
                   ] );
               ( "limit",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "integer");
+                    ("type", Mcp.Json.string "integer");
                     ( "description",
-                      `String "Optional: Maximum number of lines to read" );
+                      Mcp.Json.string
+                        "Optional: Maximum number of lines to read" );
                   ] );
             ] );
-        ("required", `List [ `String "file_path" ]);
+        ("required", Mcp.Json.array [ Mcp.Json.string "file_path" ]);
       ]
 end
 
@@ -57,14 +68,44 @@ module Output = struct
     end_line : int;
     end_col : int;
   }
-  [@@deriving yojson]
+
+  let diagnostic_json : diagnostic Jsont.t =
+    Jsont.Object.map
+      (fun message severity start_line start_col end_line end_col ->
+        ({ message; severity; start_line; start_col; end_line; end_col }
+          : diagnostic))
+    |> Jsont.Object.mem "message" Jsont.string ~enc:(fun (v : diagnostic) ->
+        v.message)
+    |> Jsont.Object.mem "severity" Jsont.string ~enc:(fun (v : diagnostic) ->
+        v.severity)
+    |> Jsont.Object.mem "start_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.start_line)
+    |> Jsont.Object.mem "start_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.start_col)
+    |> Jsont.Object.mem "end_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.end_line)
+    |> Jsont.Object.mem "end_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.end_col)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   type t = {
     content : string;
-    diagnostics : diagnostic list option; [@yojson.option]
-    merlin_error : string option; [@yojson.option]
+    diagnostics : diagnostic list option;
+    merlin_error : string option;
   }
-  [@@deriving yojson]
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun content diagnostics merlin_error ->
+        ({ content; diagnostics; merlin_error } : t))
+    |> Jsont.Object.mem "content" Jsont.string ~enc:(fun (v : t) -> v.content)
+    |> Jsont.Object.mem "diagnostics"
+         (Jsont.option (Jsont.list diagnostic_json))
+         ~enc:(fun (v : t) -> v.diagnostics)
+    |> Jsont.Object.mem "merlin_error" (Jsont.option Jsont.string)
+         ~enc:(fun (v : t) -> v.merlin_error)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

@@ -13,7 +13,7 @@ module Context = struct
     req_id : Types.request_id;
     prog_token : Types.progress_token option;
     send_notif : Mcp.Notification.t -> unit;
-    meta : Yojson.Safe.t option;
+    meta : Jsont.json option;
   }
 
   let request_id t = t.req_id
@@ -84,10 +84,10 @@ module Logging = struct
     in
     let logger = Logs.Src.name src in
     let data =
-      `Assoc
+      Mcp.Json.object_
         [
-          ("message", `String msg);
-          ("timestamp", `String (string_of_float (Unix.time ())));
+          ("message", Jsont.Json.string msg);
+          ("timestamp", Jsont.Json.string (string_of_float (Unix.time ())));
         ]
     in
     let params =
@@ -133,9 +133,8 @@ end
 module type Json_converter = sig
   type t
 
-  val to_yojson : t -> Yojson.Safe.t
-  val of_yojson : Yojson.Safe.t -> (t, string) result
-  val schema : unit -> Yojson.Safe.t
+  val json : t Jsont.t
+  val schema : unit -> Jsont.json
 end
 
 (** Functor for creating SDK servers with different computational contexts *)
@@ -148,11 +147,11 @@ module Make (M : Io) = struct
 
   type tool_handler = {
     info : handler_info;
-    schema : Yojson.Safe.t option;
-    output_schema : Yojson.Safe.t option;
+    schema : Jsont.json option;
+    output_schema : Jsont.json option;
     annotations : Mcp.Types.Tool.annotation option;
     handler :
-      Yojson.Safe.t option ->
+      Jsont.json option ->
       Context.t ->
       (Mcp.Request.Tools.Call.result, string) result M.t;
   }
@@ -182,9 +181,9 @@ module Make (M : Io) = struct
 
   type prompt_handler = {
     info : handler_info;
-    schema : Yojson.Safe.t option;
+    schema : Jsont.json option;
     handler :
-      Yojson.Safe.t option ->
+      Jsont.json option ->
       Context.t ->
       (Mcp.Request.Prompts.Get.result, string) result M.t;
   }
@@ -227,7 +226,8 @@ module Make (M : Io) = struct
       if mcp_logging_config.enabled then
         {
           capabilities with
-          logging = Some (`Assoc [ ("enabled", `Bool true) ]);
+          logging =
+            Some (Mcp.Json.object_ [ ("enabled", Jsont.Json.bool true) ]);
         }
       else capabilities
     in
@@ -248,7 +248,7 @@ module Make (M : Io) = struct
     let output_schema_error =
       match output_schema with
       | Some out_schema -> (
-          let basic_out_schema = Yojson.Safe.to_basic out_schema in
+          let basic_out_schema = Json_schema.to_basic out_schema in
           match
             Jsonschema.create_validator_from_json ~schema:basic_out_schema ()
           with
@@ -272,8 +272,8 @@ module Make (M : Io) = struct
                   let content =
                     Option.get res.Mcp.Request.Tools.Call.structured_content
                   in
-                  let basic_content = Yojson.Safe.to_basic content in
-                  let basic_schema = Yojson.Safe.to_basic schema in
+                  let basic_content = Json_schema.to_basic content in
+                  let basic_schema = Json_schema.to_basic schema in
                   match
                     Jsonschema.create_validator_from_json ~schema:basic_schema
                       ()
@@ -295,7 +295,8 @@ module Make (M : Io) = struct
     let th : tool_handler =
       {
         info = { name; title; description };
-        schema = Some (`Assoc [ ("type", `String "object") ]);
+        schema =
+          Some (Mcp.Json.object_ [ ("type", Jsont.Json.string "object") ]);
         output_schema;
         annotations;
         handler = typed_handler;
@@ -310,7 +311,7 @@ module Make (M : Io) = struct
       string ->
       ?title:string ->
       ?description:string ->
-      ?output_schema:Yojson.Safe.t ->
+      ?output_schema:Jsont.json ->
       ?annotations:Mcp.Types.Tool.annotation ->
       ?args:(module Json_converter with type t = a) ->
       (a -> Context.t -> (Mcp.Request.Tools.Call.result, string) result M.t) ->
@@ -322,7 +323,7 @@ module Make (M : Io) = struct
           (Obj.magic handler)
     | Some (module Args : Json_converter with type t = a) ->
         let schema = Args.schema () in
-        let basic_schema = Yojson.Safe.to_basic schema in
+        let basic_schema = Json_schema.to_basic schema in
         let input_schema_error =
           match
             Jsonschema.create_validator_from_json ~schema:basic_schema ()
@@ -336,7 +337,7 @@ module Make (M : Io) = struct
         let output_schema_error =
           match output_schema with
           | Some out_schema -> (
-              let basic_out_schema = Yojson.Safe.to_basic out_schema in
+              let basic_out_schema = Json_schema.to_basic out_schema in
               match
                 Jsonschema.create_validator_from_json ~schema:basic_out_schema
                   ()
@@ -358,8 +359,8 @@ module Make (M : Io) = struct
           match schema_error with
           | Some err -> M.return (Error err)
           | None -> (
-              let json = Option.value json_opt ~default:(`Assoc []) in
-              let basic_json = Yojson.Safe.to_basic json in
+              let json = Option.value json_opt ~default:(Mcp.Json.object_ []) in
+              let basic_json = Json_schema.to_basic json in
               match
                 Jsonschema.create_validator_from_json ~schema:basic_schema ()
               with
@@ -376,7 +377,7 @@ module Make (M : Io) = struct
                            (Printf.sprintf "Input validation failed: %s"
                               (Jsonschema.Validation_error.to_string error)))
                   | Ok () -> (
-                      match Args.of_yojson json with
+                      match Jsont.Json.decode Args.json json with
                       | Ok args ->
                           M.map
                             (fun result ->
@@ -392,10 +393,10 @@ module Make (M : Io) = struct
                                          .structured_content
                                   in
                                   let basic_content =
-                                    Yojson.Safe.to_basic content
+                                    Json_schema.to_basic content
                                   in
                                   let basic_schema =
-                                    Yojson.Safe.to_basic schema
+                                    Json_schema.to_basic schema
                                   in
                                   match
                                     Jsonschema.create_validator_from_json
@@ -521,8 +522,8 @@ module Make (M : Io) = struct
     | Some (module Args : Json_converter with type t = a) ->
         let schema = Args.schema () in
         let typed_handler json_opt ctx =
-          let json = Option.value json_opt ~default:(`Assoc []) in
-          match Args.of_yojson json with
+          let json = Option.value json_opt ~default:(Mcp.Json.object_ []) in
+          match Jsont.Json.decode Args.json json with
           | Ok args -> handler args ctx
           | Error e -> M.return (Error ("Failed to parse arguments: " ^ e))
         in
@@ -620,7 +621,8 @@ module Make (M : Io) = struct
                     Mcp.Types.Tool.name = h.info.name;
                     title = h.info.title;
                     description = h.info.description;
-                    input_schema = Option.value ~default:(`Assoc []) h.schema;
+                    input_schema =
+                      Option.value ~default:(Mcp.Json.object_ []) h.schema;
                     output_schema = h.output_schema;
                     annotations = h.annotations;
                     meta = None;
@@ -812,7 +814,10 @@ module Make (M : Io) = struct
                   | None -> None
                   | Some args ->
                       Some
-                        (`Assoc (List.map (fun (k, v) -> (k, `String v)) args))
+                        (Mcp.Json.object_
+                           (List.map
+                              (fun (k, v) -> (k, Jsont.Json.string v))
+                              args))
                 in
                 M.run (h.handler json_args ctx));
         on_resources_subscribe =
@@ -839,8 +844,11 @@ module Make (M : Io) = struct
             Logs.set_level ocaml_level;
             Log.info (fun m ->
                 m "MCP log level set to %s"
-                  (Yojson.Safe.to_string
-                     (Mcp.Types.LogLevel.to_yojson params.level)));
+                  (match
+                     Jsont.Json.encode Mcp.Types.LogLevel.json params.level
+                   with
+                  | Ok json -> Mcp.Json.to_string json
+                  | Error error -> error));
             Ok { meta = None });
       }
     in

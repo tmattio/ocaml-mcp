@@ -10,7 +10,7 @@
       let async_tool_handler args ctx =
         (* Perform async operations *)
         Eio.Fiber.yield ();
-        async_ok Tool_result.(text "Done!")
+        async_ok Mcp_sdk.Tool_result.(text "Done!")
 
       let server =
         Server.create ~server_info () Server.tool server "my-async-tool"
@@ -22,15 +22,14 @@
 module type Json_converter = sig
   type t
 
-  val to_yojson : t -> Yojson.Safe.t
-  val of_yojson : Yojson.Safe.t -> (t, string) result
-  val schema : unit -> Yojson.Safe.t
+  val json : t Jsont.t
+  val schema : unit -> Jsont.json
 end
 
 (** {1 Async Context} *)
 
 module Context : sig
-  include module type of Mcp_sdk.Context
+  include module type of Mcp_sdk.Context with type t = Mcp_sdk.Context.t
 
   val report_progress_async :
     t -> sw:Eio.Switch.t -> progress:float -> ?total:float -> unit -> unit
@@ -66,7 +65,7 @@ module Server : sig
     string ->
     ?title:string ->
     ?description:string ->
-    ?output_schema:Yojson.Safe.t ->
+    ?output_schema:Jsont.json ->
     ?annotations:Mcp.Types.Tool.annotation ->
     ?args:(module Json_converter with type t = 'a) ->
     ('a ->

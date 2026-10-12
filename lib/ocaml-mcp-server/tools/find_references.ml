@@ -4,21 +4,40 @@ let name = "ocaml_find_references"
 let description = "Find all usages of a symbol"
 
 module Args = struct
-  type t = { file_path : string; line : int; column : int } [@@deriving yojson]
+  type t = { file_path : string; line : int; column : int }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun file_path line column ->
+        ({ file_path; line; column } : t))
+    |> Jsont.Object.mem "file_path" Jsont.string ~enc:(fun (v : t) ->
+        v.file_path)
+    |> Jsont.Object.mem "line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : t) -> v.line)
+    |> Jsont.Object.mem "column" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : t) -> v.column)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc
+          Mcp.Json.object_
             [
-              ("file_path", `Assoc [ ("type", `String "string") ]);
-              ("line", `Assoc [ ("type", `String "integer") ]);
-              ("column", `Assoc [ ("type", `String "integer") ]);
+              ( "file_path",
+                Mcp.Json.object_ [ ("type", Mcp.Json.string "string") ] );
+              ("line", Mcp.Json.object_ [ ("type", Mcp.Json.string "integer") ]);
+              ( "column",
+                Mcp.Json.object_ [ ("type", Mcp.Json.string "integer") ] );
             ] );
         ( "required",
-          `List [ `String "file_path"; `String "line"; `String "column" ] );
+          Mcp.Json.array
+            [
+              Mcp.Json.string "file_path";
+              Mcp.Json.string "line";
+              Mcp.Json.string "column";
+            ] );
       ]
 end
 
@@ -30,9 +49,32 @@ module Output = struct
     end_line : int;
     end_col : int;
   }
-  [@@deriving yojson]
 
-  type t = { references : reference list; count : int } [@@deriving yojson]
+  let reference_json : reference Jsont.t =
+    Jsont.Object.map (fun file start_line start_col end_line end_col ->
+        ({ file; start_line; start_col; end_line; end_col } : reference))
+    |> Jsont.Object.mem "file" Jsont.string ~enc:(fun (v : reference) -> v.file)
+    |> Jsont.Object.mem "start_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : reference) -> v.start_line)
+    |> Jsont.Object.mem "start_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : reference) -> v.start_col)
+    |> Jsont.Object.mem "end_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : reference) -> v.end_line)
+    |> Jsont.Object.mem "end_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : reference) -> v.end_col)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
+
+  type t = { references : reference list; count : int }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun references count -> ({ references; count } : t))
+    |> Jsont.Object.mem "references" (Jsont.list reference_json)
+         ~enc:(fun (v : t) -> v.references)
+    |> Jsont.Object.mem "count" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : t) -> v.count)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

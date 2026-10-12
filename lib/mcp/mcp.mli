@@ -15,6 +15,8 @@
     {1 Core Modules} *)
 
 module Types = Mcp_types
+
+module Json = Mcp_json
 (** Protocol types and data structures. *)
 
 module Request = Mcp_request

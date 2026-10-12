@@ -1,76 +1,57 @@
 open Jsonrpc
 
-(* Convert Json.t to Yojson.Safe.t *)
-let rec json_to_yojson (json : Json.t) : Yojson.Safe.t =
-  match json with
-  | `Assoc lst -> `Assoc (List.map (fun (k, v) -> (k, json_to_yojson v)) lst)
-  | `Bool b -> `Bool b
-  | `Float f -> `Float f
-  | `Int i -> `Int i
-  | `Intlit s -> `Intlit s
-  | `List lst -> `List (List.map json_to_yojson lst)
-  | `Null -> `Null
-  | `String s -> `String s
-  | `Tuple lst ->
-      `List (List.map json_to_yojson lst) (* Convert tuple to list *)
-  | `Variant (name, opt) -> (
-      (* Convert variant to an object *)
-      match opt with
-      | None -> `Assoc [ ("variant", `String name) ]
-      | Some v ->
-          `Assoc [ ("variant", `String name); ("value", json_to_yojson v) ])
+(* Adapt only at the JSON-RPC dependency boundary. *)
+let structured_to_json =
+  Option.map (fun value -> Mcp_json.of_jsonrpc (Structured.yojson_of_t value))
 
-(* Convert jsonrpc types to Yojson *)
-let structured_to_yojson (s : Structured.t option) : Yojson.Safe.t option =
-  match s with
-  | None -> None
-  | Some s -> Some (json_to_yojson (Structured.yojson_of_t s))
-
-(* Convert Yojson to jsonrpc types *)
-let yojson_to_structured (json : Yojson.Safe.t option) : Structured.t option =
-  match json with
-  | None -> None
-  | Some json -> (
-      match json with
-      | `Assoc _ | `List _ -> Some (Structured.t_of_yojson (json :> Json.t))
-      | _ ->
-          Some (Structured.t_of_yojson (`Assoc [ ("value", (json :> Json.t)) ]))
-      )
+let json_to_structured =
+  Option.map (fun value ->
+      let value = Mcp_json.to_jsonrpc value in
+      match value with
+      | `Assoc _ | `List _ -> Structured.t_of_yojson value
+      | _ -> Structured.t_of_yojson (`Assoc [ ("value", value) ]))
 
 type incoming_message =
   | Request of Id.t * Mcp_request.t
   | Notification of Mcp_notification.t
-  | Response of Id.t * (Yojson.Safe.t, Response.Error.t) result
+  | Response of Id.t * (Jsont.json, Response.Error.t) result
   | Batch_request of incoming_message list
   | Batch_response of incoming_message list
 
 type outgoing_message =
-  | Request of Id.t * string * Yojson.Safe.t option
-  | Notification of string * Yojson.Safe.t option
-  | Response of Id.t * (Yojson.Safe.t, Response.Error.t) result
+  | Request of Id.t * string * Jsont.json option
+  | Notification of string * Jsont.json option
+  | Response of Id.t * (Jsont.json, Response.Error.t) result
   | Batch_response of outgoing_message list
 
+let validate_id = function
+  | `Int value -> ignore (Mcp_json.int value)
+  | `String _ -> ()
+
 let parse_request (req : Request.t) : (incoming_message, string) result =
-  let params = structured_to_yojson req.params in
+  validate_id req.id;
+  let params = structured_to_json req.params in
   match Mcp_request.of_jsonrpc req.method_ params with
   | Ok request -> Ok (Request (req.id, request))
   | Error e -> Error e
 
 let parse_notification (notif : Notification.t) :
     (incoming_message, string) result =
-  let params = structured_to_yojson notif.params in
+  let params = structured_to_json notif.params in
   match Mcp_notification.of_jsonrpc notif.method_ params with
   | Ok notification -> Ok (Notification notification)
   | Error e -> Error e
 
 let parse_response (resp : Response.t) : incoming_message =
+  validate_id resp.id;
   match resp.result with
   | Ok json_result ->
-      let yojson_result = json_to_yojson json_result in
-      Response (resp.id, Ok yojson_result)
+      let result = Mcp_json.of_jsonrpc json_result in
+      Response (resp.id, Ok result)
   | Error error -> Response (resp.id, Error error)
 
-let parse_message (msg : Packet.t) : (incoming_message, string) result =
+let parse_message_unchecked (msg : Packet.t) : (incoming_message, string) result
+    =
   match msg with
   | Packet.Request req -> parse_request req
   | Packet.Notification notif -> parse_notification notif
@@ -102,16 +83,20 @@ let parse_message (msg : Packet.t) : (incoming_message, string) result =
               (function Ok m -> Some m | Error _ -> None)
               parsed))
 
+let parse_message msg =
+  try parse_message_unchecked msg
+  with Invalid_argument message -> Error message
+
 let make_request ~id method_ params : Packet.t =
-  let params = yojson_to_structured params in
+  let params = json_to_structured params in
   Packet.Request { Request.id; method_; params }
 
 let make_notification method_ params : Packet.t =
-  let params = yojson_to_structured params in
+  let params = json_to_structured params in
   Packet.Notification { Notification.method_; params }
 
 let make_response ~id result : Packet.t =
-  let json_result = (result : Yojson.Safe.t :> Json.t) in
+  let json_result = Mcp_json.to_jsonrpc result in
   Packet.Response { Response.id; result = Ok json_result }
 
 let make_error_response ~id error : Packet.t =
@@ -135,18 +120,18 @@ let rec outgoing_to_message = function
 
 let request_to_outgoing ~id (request : Mcp_request.t) : outgoing_message =
   let method_ = Mcp_request.method_name request in
-  let params = Some (Mcp_request.params_to_yojson request) in
+  let params = Some (Mcp_request.params_to_json request) in
   Request (id, method_, params)
 
 let notification_to_outgoing (notification : Mcp_notification.t) :
     outgoing_message =
   let method_ = Mcp_notification.method_name notification in
-  let params = Some (Mcp_notification.to_yojson notification) in
+  let params = Some (Mcp_notification.to_json notification) in
   Notification (method_, params)
 
 let response_to_outgoing ~id (response : Mcp_request.response) :
     outgoing_message =
-  let result = Mcp_request.response_to_yojson response in
+  let result = Mcp_request.response_to_json response in
   Response (id, Ok result)
 
 let error_to_outgoing ~id ~code ~message ?data () : outgoing_message =

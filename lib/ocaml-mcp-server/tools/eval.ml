@@ -2,21 +2,38 @@ let name = "ocaml_eval"
 let description = "Evaluate OCaml expressions in project context"
 
 module Args = struct
-  type t = { code : string } [@@deriving yojson]
+  type t = { code : string }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun code -> ({ code } : t))
+    |> Jsont.Object.mem "code" Jsont.string ~enc:(fun (v : t) -> v.code)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc [ ("code", `Assoc [ ("type", `String "string") ]) ] );
-        ("required", `List [ `String "code" ]);
+          Mcp.Json.object_
+            [
+              ("code", Mcp.Json.object_ [ ("type", Mcp.Json.string "string") ]);
+            ] );
+        ("required", Mcp.Json.array [ Mcp.Json.string "code" ]);
       ]
 end
 
 module Output = struct
-  type t = { result : string; stderr : string option [@default None] }
-  [@@deriving yojson]
+  type t = { result : string; stderr : string option }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun result stderr -> ({ result; stderr } : t))
+    |> Jsont.Object.mem "result" Jsont.string ~enc:(fun (v : t) -> v.result)
+    |> Jsont.Object.mem "stderr" (Jsont.option Jsont.string)
+         ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : t) ->
+           v.stderr)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

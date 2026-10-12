@@ -13,7 +13,8 @@ module Initialize : sig
     capabilities : Capabilities.client;
     client_info : ClientInfo.t;
   }
-  [@@deriving yojson { strict = false }]
+
+  val params_json : params Jsont.t
   (** Initialization parameters with version and capabilities. *)
 
   type result = {
@@ -21,77 +22,75 @@ module Initialize : sig
     capabilities : Capabilities.server;
     server_info : ServerInfo.t;
     instructions : string option;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val result_json : result Jsont.t
   (** Initialization result with negotiated version and server info. *)
 end
 
 (** Resource discovery and reading. *)
 module Resources : sig
   module List : sig
-    type params = {
-      cursor : cursor option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { cursor : cursor option; meta : Jsont.json option }
+
+    val params_json : params Jsont.t
 
     type result = {
       resources : Resource.t list;
       next_cursor : cursor option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    val result_json : result Jsont.t
   end
 
   module Read : sig
-    type params = {
-      uri : string;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { uri : string; meta : Jsont.json option }
+
+    val params_json : params Jsont.t
 
     type result = {
       contents : Content.resource_contents list;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    val result_json : result Jsont.t
   end
 
   module Subscribe : sig
-    type params = {
-      uri : string;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { uri : string; meta : Jsont.json option }
 
-    type result = unit [@@deriving yojson { strict = false }]
+    val params_json : params Jsont.t
+
+    type result = unit
+
+    val result_json : result Jsont.t
   end
 
   module Unsubscribe : sig
-    type params = {
-      uri : string;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { uri : string; meta : Jsont.json option }
 
-    type result = unit [@@deriving yojson { strict = false }]
+    val params_json : params Jsont.t
+
+    type result = unit
+
+    val result_json : result Jsont.t
   end
 
   module Templates : sig
     module List : sig
-      type params = {
-        cursor : cursor option;
-        meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-      }
-      [@@deriving yojson { strict = false }]
+      type params = { cursor : cursor option; meta : Jsont.json option }
+
+      val params_json : params Jsont.t
 
       type result = {
         resource_templates : Resource.template list;
         next_cursor : cursor option;
-        meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+        meta : Jsont.json option;
       }
-      [@@deriving yojson { strict = false }]
+
+      val result_json : result Jsont.t
     end
   end
 end
@@ -99,71 +98,71 @@ end
 (** Prompt template management. *)
 module Prompts : sig
   module List : sig
-    type params = {
-      cursor : cursor option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { cursor : cursor option; meta : Jsont.json option }
+
+    val params_json : params Jsont.t
 
     type result = {
       prompts : Prompt.t list;
       next_cursor : cursor option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    val result_json : result Jsont.t
   end
 
   module Get : sig
     type params = {
       name : string;
       arguments : (string * string) list option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
 
-    val params_to_yojson : params -> Yojson.Safe.t
-    val params_of_yojson : Yojson.Safe.t -> (params, string) Stdlib.result
+    val params_json : params Jsont.t
 
     type result = {
       description : string option;
       messages : Prompt.message list;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    val result_json : result Jsont.t
   end
 end
 
 (** Tool discovery and invocation. *)
 module Tools : sig
   module List : sig
-    type params = {
-      cursor : cursor option; [@default None]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { cursor : cursor option; meta : Jsont.json option }
+
+    val params_json : params Jsont.t
 
     type result = {
       tools : Tool.t list;
       next_cursor : cursor option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    val result_json : result Jsont.t
   end
 
   module Call : sig
     type params = {
       name : string;
-      arguments : Yojson.Safe.t option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      arguments : Jsont.json option;
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    val params_json : params Jsont.t
 
     type result = {
       content : Content.t list;
       is_error : bool option;
-      structured_content : Yojson.Safe.t option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      structured_content : Jsont.json option;
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    val result_json : result Jsont.t
   end
 end
 
@@ -178,18 +177,20 @@ module Sampling : sig
       temperature : float option;
       max_tokens : int option;
       stop_sequences : string list option;
-      metadata : Yojson.Safe.t option;
+      metadata : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    val params_json : params Jsont.t
 
     type result = {
       role : string;
       content : Content.t;
       model : string;
       stop_reason : string option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    val result_json : result Jsont.t
   end
 end
 
@@ -199,33 +200,31 @@ module Elicitation : sig
     type params = {
       message : string;
       requested_schema : ElicitationSchema.t;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
 
-    val params_to_yojson : params -> Yojson.Safe.t
-    val params_of_yojson : Yojson.Safe.t -> (params, string) Stdlib.result
+    val params_json : params Jsont.t
 
     type result = {
       action : string;
-      content : (string * Yojson.Safe.t) list option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      content : (string * Jsont.json) list option;
+      meta : Jsont.json option;
     }
 
-    val result_to_yojson : result -> Yojson.Safe.t
-    val result_of_yojson : Yojson.Safe.t -> (result, string) Stdlib.result
+    val result_json : result Jsont.t
   end
 end
 
 (** Logging configuration. *)
 module Logging : sig
   module SetLevel : sig
-    type params = {
-      level : LogLevel.t;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { level : LogLevel.t; meta : Jsont.json option }
 
-    type result = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+    val params_json : params Jsont.t
+
+    type result = OnlyMetaParams.t
+
+    val result_json : result Jsont.t
   end
 end
 
@@ -235,35 +234,39 @@ module Completion : sig
     type params = {
       ref_ : CompletionReference.t;
       argument : CompletionArgument.t;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
 
-    type result = {
-      completion : Completion.t;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    val params_json : params Jsont.t
+
+    type result = { completion : Completion.t; meta : Jsont.json option }
+
+    val result_json : result Jsont.t
   end
 end
 
 (** Root directory listing. *)
 module Roots : sig
   module List : sig
-    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+    type params = OnlyMetaParams.t
 
-    type result = {
-      roots : Root.t list;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    val params_json : params Jsont.t
+
+    type result = { roots : Root.t list; meta : Jsont.json option }
+
+    val result_json : result Jsont.t
   end
 end
 
 (** Connection keep-alive. *)
 module Ping : sig
-  type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
-  type result = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+  type params = OnlyMetaParams.t
+
+  val params_json : params Jsont.t
+
+  type result = OnlyMetaParams.t
+
+  val result_json : result Jsont.t
 end
 
 type t =
@@ -287,10 +290,10 @@ type t =
 val method_name : t -> string
 (** [method_name request] returns JSON-RPC method name. *)
 
-val params_to_yojson : t -> Yojson.Safe.t
-(** [params_to_yojson request] converts parameters to JSON. *)
+val params_to_json : t -> Jsont.json
+(** [params_to_json request] converts parameters to JSON. *)
 
-val of_jsonrpc : string -> Yojson.Safe.t option -> (t, string) result
+val of_jsonrpc : string -> Jsont.json option -> (t, string) result
 (** [of_jsonrpc method params] parses JSON-RPC into typed request.
 
     @param method JSON-RPC method name
@@ -315,5 +318,5 @@ type response =
   | RootsList of Roots.List.result
   | Ping of Ping.result  (** Response variants for all MCP methods. *)
 
-val response_to_yojson : response -> Yojson.Safe.t
-(** [response_to_yojson response] converts result to JSON. *)
+val response_to_json : response -> Jsont.json
+(** [response_to_json response] converts result to JSON. *)

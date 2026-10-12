@@ -11,58 +11,88 @@ module Args = struct
     file_path : string;
     old_string : string;
     new_string : string;
-    expected_replacements : int option; [@default None]
-    replace_all : bool option; [@default None]
+    expected_replacements : int option;
+    replace_all : bool option;
   }
-  [@@deriving yojson]
+
+  let json : t Jsont.t =
+    Jsont.Object.map
+      (fun file_path old_string new_string expected_replacements replace_all ->
+        ({
+           file_path;
+           old_string;
+           new_string;
+           expected_replacements;
+           replace_all;
+         }
+          : t))
+    |> Jsont.Object.mem "file_path" Jsont.string ~enc:(fun (v : t) ->
+        v.file_path)
+    |> Jsont.Object.mem "old_string" Jsont.string ~enc:(fun (v : t) ->
+        v.old_string)
+    |> Jsont.Object.mem "new_string" Jsont.string ~enc:(fun (v : t) ->
+        v.new_string)
+    |> Jsont.Object.mem "expected_replacements"
+         (Jsont.option Mcp.Types.Json_codec.integer_json)
+         ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : t) ->
+           v.expected_replacements)
+    |> Jsont.Object.mem "replace_all" (Jsont.option Jsont.bool) ~dec_absent:None
+         ~enc_omit:Option.is_none ~enc:(fun (v : t) -> v.replace_all)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc
+          Mcp.Json.object_
             [
               ( "file_path",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "string");
-                    ("description", `String "The path to the file to edit");
+                    ("type", Mcp.Json.string "string");
+                    ( "description",
+                      Mcp.Json.string "The path to the file to edit" );
                   ] );
               ( "old_string",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "string");
-                    ("description", `String "The exact text to replace");
+                    ("type", Mcp.Json.string "string");
+                    ("description", Mcp.Json.string "The exact text to replace");
                   ] );
               ( "new_string",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "string");
-                    ("description", `String "The text to replace it with");
+                    ("type", Mcp.Json.string "string");
+                    ( "description",
+                      Mcp.Json.string "The text to replace it with" );
                   ] );
               ( "expected_replacements",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "integer");
+                    ("type", Mcp.Json.string "integer");
                     ( "description",
-                      `String "Number of replacements expected (defaults to 1)"
-                    );
+                      Mcp.Json.string
+                        "Number of replacements expected (defaults to 1)" );
                   ] );
               ( "replace_all",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "boolean");
+                    ("type", Mcp.Json.string "boolean");
                     ( "description",
-                      `String
+                      Mcp.Json.string
                         "Replace all occurrences of the string (overrides \
                          expected_replacements)" );
                   ] );
             ] );
         ( "required",
-          `List
-            [ `String "file_path"; `String "old_string"; `String "new_string" ]
-        );
+          Mcp.Json.array
+            [
+              Mcp.Json.string "file_path";
+              Mcp.Json.string "old_string";
+              Mcp.Json.string "new_string";
+            ] );
       ]
 end
 
@@ -75,14 +105,44 @@ module Output = struct
     end_line : int;
     end_col : int;
   }
-  [@@deriving yojson]
+
+  let diagnostic_json : diagnostic Jsont.t =
+    Jsont.Object.map
+      (fun message severity start_line start_col end_line end_col ->
+        ({ message; severity; start_line; start_col; end_line; end_col }
+          : diagnostic))
+    |> Jsont.Object.mem "message" Jsont.string ~enc:(fun (v : diagnostic) ->
+        v.message)
+    |> Jsont.Object.mem "severity" Jsont.string ~enc:(fun (v : diagnostic) ->
+        v.severity)
+    |> Jsont.Object.mem "start_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.start_line)
+    |> Jsont.Object.mem "start_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.start_col)
+    |> Jsont.Object.mem "end_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.end_line)
+    |> Jsont.Object.mem "end_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.end_col)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   type t = {
     replacements_made : int;
-    diagnostics : diagnostic list option; [@yojson.option]
+    diagnostics : diagnostic list option;
     formatted : bool;
   }
-  [@@deriving yojson]
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun replacements_made diagnostics formatted ->
+        ({ replacements_made; diagnostics; formatted } : t))
+    |> Jsont.Object.mem "replacements_made" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : t) -> v.replacements_made)
+    |> Jsont.Object.mem "diagnostics"
+         (Jsont.option (Jsont.list diagnostic_json))
+         ~enc:(fun (v : t) -> v.diagnostics)
+    |> Jsont.Object.mem "formatted" Jsont.bool ~enc:(fun (v : t) -> v.formatted)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

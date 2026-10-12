@@ -1,6 +1,4 @@
 (library
  (name mcp_sdk_eio)
  (public_name mcp-eio.sdk)
- (libraries logs logs.threaded mcp.sdk mcp mcp-eio eio eio.unix jsonschema)
- (preprocess
-  (pps ppx_deriving_yojson)))
+ (libraries jsont logs logs.threaded mcp.sdk mcp mcp-eio eio eio.unix jsonschema))

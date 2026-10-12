@@ -6,21 +6,40 @@ let description =
   "Get type of expression at specific file position in OCaml source files"
 
 module Args = struct
-  type t = { file_path : string; line : int; column : int } [@@deriving yojson]
+  type t = { file_path : string; line : int; column : int }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun file_path line column ->
+        ({ file_path; line; column } : t))
+    |> Jsont.Object.mem "file_path" Jsont.string ~enc:(fun (v : t) ->
+        v.file_path)
+    |> Jsont.Object.mem "line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : t) -> v.line)
+    |> Jsont.Object.mem "column" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : t) -> v.column)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc
+          Mcp.Json.object_
             [
-              ("file_path", `Assoc [ ("type", `String "string") ]);
-              ("line", `Assoc [ ("type", `String "integer") ]);
-              ("column", `Assoc [ ("type", `String "integer") ]);
+              ( "file_path",
+                Mcp.Json.object_ [ ("type", Mcp.Json.string "string") ] );
+              ("line", Mcp.Json.object_ [ ("type", Mcp.Json.string "integer") ]);
+              ( "column",
+                Mcp.Json.object_ [ ("type", Mcp.Json.string "integer") ] );
             ] );
         ( "required",
-          `List [ `String "file_path"; `String "line"; `String "column" ] );
+          Mcp.Json.array
+            [
+              Mcp.Json.string "file_path";
+              Mcp.Json.string "line";
+              Mcp.Json.string "column";
+            ] );
       ]
 end
 
@@ -31,10 +50,32 @@ module Output = struct
     end_line : int;
     end_col : int;
   }
-  [@@deriving yojson]
 
-  type t = { type_info : string; location : location option [@default None] }
-  [@@deriving yojson]
+  let location_json : location Jsont.t =
+    Jsont.Object.map (fun start_line start_col end_line end_col ->
+        ({ start_line; start_col; end_line; end_col } : location))
+    |> Jsont.Object.mem "start_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : location) -> v.start_line)
+    |> Jsont.Object.mem "start_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : location) -> v.start_col)
+    |> Jsont.Object.mem "end_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : location) -> v.end_line)
+    |> Jsont.Object.mem "end_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : location) -> v.end_col)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
+
+  type t = { type_info : string; location : location option }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun type_info location -> ({ type_info; location } : t))
+    |> Jsont.Object.mem "type_info" Jsont.string ~enc:(fun (v : t) ->
+        v.type_info)
+    |> Jsont.Object.mem "location" (Jsont.option location_json)
+         ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : t) ->
+           v.location)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

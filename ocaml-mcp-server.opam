@@ -14,8 +14,10 @@ depends: [
   "mcp"
   "mcp-eio"
   "eio_main"
+  "jsont"
   "ocaml-platform-sdk"
   "cmdliner"
+  "alcotest" {with-test}
   "odoc" {with-doc}
 ]
 build: [

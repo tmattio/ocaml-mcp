@@ -8,7 +8,9 @@ open Mcp_types
 
 (** Sent after successful initialization handshake. *)
 module Initialized : sig
-  type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+  type params = OnlyMetaParams.t
+
+  val params_json : params Jsont.t
 end
 
 (** Progress updates for long-running operations. *)
@@ -18,25 +20,31 @@ module Progress : sig
     progress : float;
     total : float option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val params_json : params Jsont.t
 end
 
 (** Request cancellation notification. *)
 module Cancelled : sig
   type params = { request_id : request_id; reason : string option }
-  [@@deriving yojson { strict = false }]
+
+  val params_json : params Jsont.t
 end
 
 (** Resource change notifications. *)
 module Resources : sig
   (** Specific resource content updated. *)
   module Updated : sig
-    type params = { uri : string } [@@deriving yojson { strict = false }]
+    type params = { uri : string }
+
+    val params_json : params Jsont.t
   end
 
   (** Available resources list changed. *)
   module ListChanged : sig
-    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+    type params = OnlyMetaParams.t
+
+    val params_json : params Jsont.t
   end
 end
 
@@ -44,7 +52,9 @@ end
 module Prompts : sig
   (** Available prompts list changed. *)
   module ListChanged : sig
-    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+    type params = OnlyMetaParams.t
+
+    val params_json : params Jsont.t
   end
 end
 
@@ -52,7 +62,9 @@ end
 module Tools : sig
   (** Available tools list changed. *)
   module ListChanged : sig
-    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+    type params = OnlyMetaParams.t
+
+    val params_json : params Jsont.t
   end
 end
 
@@ -60,7 +72,9 @@ end
 module Roots : sig
   (** Root directories list changed. *)
   module ListChanged : sig
-    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+    type params = OnlyMetaParams.t
+
+    val params_json : params Jsont.t
   end
 end
 
@@ -69,9 +83,10 @@ module Message : sig
   type params = {
     level : LogLevel.t;
     logger : string option;
-    data : Yojson.Safe.t;
+    data : Jsont.json;
   }
-  [@@deriving yojson { strict = false }]
+
+  val params_json : params Jsont.t
 end
 
 type t =
@@ -89,10 +104,10 @@ type t =
 val method_name : t -> string
 (** [method_name notification] returns JSON-RPC method name. *)
 
-val to_yojson : t -> Yojson.Safe.t
-(** [to_yojson notification] converts to JSON parameters. *)
+val to_json : t -> Jsont.json
+(** [to_json notification] converts to JSON parameters. *)
 
-val of_jsonrpc : string -> Yojson.Safe.t option -> (t, string) result
+val of_jsonrpc : string -> Jsont.json option -> (t, string) result
 (** [of_jsonrpc method params] parses JSON-RPC into typed notification.
 
     @param method JSON-RPC method name

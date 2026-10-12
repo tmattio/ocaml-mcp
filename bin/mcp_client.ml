@@ -29,7 +29,7 @@ type client = {
   (* Pending requests waiting for responses *)
   pending :
     ( Jsonrpc.Id.t,
-      (Yojson.Safe.t, Jsonrpc.Response.Error.t) result Promise.u )
+      (Jsont.json, Jsonrpc.Response.Error.t) result Promise.u )
     Hashtbl.t;
       [@warning "-69"]
 }
@@ -101,7 +101,7 @@ let connect ~sw ~connection ~config =
   (* Get initialization result *)
   match Promise.await init_promise with
   | Ok json -> (
-      match Mcp.Request.Initialize.result_of_yojson json with
+      match Jsont.Json.decode Mcp.Request.Initialize.result_json json with
       | Ok result ->
           t.server_info <- Some result.server_info;
           t.capabilities <- Some result.capabilities;
@@ -147,14 +147,14 @@ let request t req =
 
 let list_resources t ?cursor ?meta () =
   let json = request t (ResourcesList { cursor; meta }) in
-  match Mcp.Request.Resources.List.result_of_yojson json with
+  match Jsont.Json.decode Mcp.Request.Resources.List.result_json json with
   | Ok result -> result
   | Error msg ->
       failwith (Printf.sprintf "Failed to parse resources list: %s" msg)
 
 let read_resource t ~uri ?meta () =
   let json = request t (ResourcesRead { uri; meta }) in
-  match Mcp.Request.Resources.Read.result_of_yojson json with
+  match Jsont.Json.decode Mcp.Request.Resources.Read.result_json json with
   | Ok result -> result
   | Error msg ->
       failwith (Printf.sprintf "Failed to parse resource read: %s" msg)
@@ -171,20 +171,20 @@ let _ = (subscribe_resource, unsubscribe_resource)
 
 let list_tools t ?cursor ?meta () =
   let json = request t (ToolsList { cursor; meta }) in
-  match Mcp.Request.Tools.List.result_of_yojson json with
+  match Jsont.Json.decode Mcp.Request.Tools.List.result_json json with
   | Ok result -> result
   | Error msg -> failwith (Printf.sprintf "Failed to parse tools list: %s" msg)
 
 let call_tool t ~name ?arguments ?meta () =
   let json = request t (ToolsCall { name; arguments; meta }) in
-  match Mcp.Request.Tools.Call.result_of_yojson json with
+  match Jsont.Json.decode Mcp.Request.Tools.Call.result_json json with
   | Ok result -> result
   | Error msg ->
       failwith (Printf.sprintf "Failed to parse tool call result: %s" msg)
 
 let list_prompts t ?cursor ?meta () =
   let json = request t (PromptsList { cursor; meta }) in
-  match Mcp.Request.Prompts.List.result_of_yojson json with
+  match Jsont.Json.decode Mcp.Request.Prompts.List.result_json json with
   | Ok result -> result
   | Error msg ->
       failwith (Printf.sprintf "Failed to parse prompts list: %s" msg)
@@ -193,19 +193,19 @@ let get_prompt t ~name ?arguments () =
   let arguments =
     Option.map
       (fun args ->
-        match args with
-        | `Assoc kvs ->
+        match Mcp.Json.fields args with
+        | Some kvs ->
             List.map
               (fun (k, v) ->
-                match v with
-                | `String value -> (k, value)
-                | _ -> failwith "Prompt arguments must be strings")
+                match Mcp.Json.get_string v with
+                | Some value -> (k, value)
+                | None -> failwith "Prompt arguments must be strings")
               kvs
-        | _ -> failwith "Prompt arguments must be an object")
+        | None -> failwith "Prompt arguments must be an object")
       arguments
   in
   let json = request t (PromptsGet { name; arguments; meta = None }) in
-  match Mcp.Request.Prompts.Get.result_of_yojson json with
+  match Jsont.Json.decode Mcp.Request.Prompts.Get.result_json json with
   | Ok result -> result
   | Error msg ->
       failwith (Printf.sprintf "Failed to parse prompt get result: %s" msg)
@@ -351,8 +351,8 @@ let call_cmd transport_config tool_name args_json meta =
       let arguments =
         Option.map
           (fun json_str ->
-            try Yojson.Safe.from_string json_str
-            with Yojson.Json_error msg ->
+            try Mcp.Json.of_string json_str
+            with Invalid_argument msg ->
               eprintf "Invalid JSON: %s\n" msg;
               exit 1)
           args_json
@@ -396,8 +396,8 @@ let () =
     match meta_json with
     | None -> None
     | Some json_str -> (
-        match Yojson.Safe.from_string json_str with
-        | exception Yojson.Json_error msg ->
+        match Mcp.Json.of_string json_str with
+        | exception Invalid_argument msg ->
             eprintf "Invalid meta JSON: %s\n" msg;
             exit 1
         | json -> (

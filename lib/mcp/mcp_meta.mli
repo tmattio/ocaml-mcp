@@ -3,7 +3,7 @@
     This module enforces the key naming rules for the `_meta` field as defined
     in the MCP specification. *)
 
-val validate : Yojson.Safe.t option -> (unit, string) result
+val validate : Jsont.json option -> (unit, string) result
 (** [validate meta_option] checks if the keys in the given JSON object conform
     to the MCP specification for `_meta` fields.
 

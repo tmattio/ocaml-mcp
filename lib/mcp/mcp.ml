@@ -1,6 +1,7 @@
 (** MCP - Model Context Protocol implementation for OCaml *)
 
 module Types = Mcp_types
+module Json = Mcp_json
 module Request = Mcp_request
 module Notification = Mcp_notification
 module Protocol = Mcp_protocol

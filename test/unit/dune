@@ -1,3 +1,39 @@
 (tests
  (names test_mcp)
+ (modules test_mcp)
  (libraries mcp alcotest))
+
+(test
+ (name test_json_codecs)
+ (modules test_json_codecs)
+ (libraries mcp alcotest jsont jsont.bytesrw))
+
+(test
+ (name test_sdk_json)
+ (package mcp-eio)
+ (modules test_sdk_json)
+ (libraries mcp mcp.sdk mcp-eio.sdk eio eio_main jsont alcotest))
+
+(test
+ (name test_bundled_json)
+ (package ocaml-mcp-server)
+ (modules test_bundled_json)
+ (libraries mcp ocaml-mcp-server jsont alcotest))
+
+(test
+ (name test_transport_json)
+ (package mcp-eio)
+ (modules test_transport_json)
+ (libraries mcp mcp-eio jsont jsonrpc eio eio_main alcotest))
+
+(test
+ (name test_protocol_fixtures)
+ (package mcp)
+ (modules test_protocol_fixtures)
+ (libraries mcp jsont alcotest))
+
+(test
+ (name test_http_json)
+ (package mcp-eio)
+ (modules test_http_json)
+ (libraries mcp mcp-eio eio eio_main jsont jsonrpc http cohttp-eio uri alcotest))

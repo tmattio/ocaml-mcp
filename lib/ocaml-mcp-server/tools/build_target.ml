@@ -2,28 +2,43 @@ let name = "dune_build_target"
 let description = "Build specific files/libraries/tests"
 
 module Args = struct
-  type t = { targets : string list } [@@deriving yojson]
+  type t = { targets : string list }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun targets -> ({ targets } : t))
+    |> Jsont.Object.mem "targets" (Jsont.list Jsont.string) ~enc:(fun (v : t) ->
+        v.targets)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc
+          Mcp.Json.object_
             [
               ( "targets",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "array");
-                    ("items", `Assoc [ ("type", `String "string") ]);
+                    ("type", Mcp.Json.string "array");
+                    ( "items",
+                      Mcp.Json.object_ [ ("type", Mcp.Json.string "string") ] );
                   ] );
             ] );
-        ("required", `List [ `String "targets" ]);
+        ("required", Mcp.Json.array [ Mcp.Json.string "targets" ]);
       ]
 end
 
 module Output = struct
-  type t = { output : string; success : bool } [@@deriving yojson]
+  type t = { output : string; success : bool }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun output success -> ({ output; success } : t))
+    |> Jsont.Object.mem "output" Jsont.string ~enc:(fun (v : t) -> v.output)
+    |> Jsont.Object.mem "success" Jsont.bool ~enc:(fun (v : t) -> v.success)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

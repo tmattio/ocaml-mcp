@@ -37,7 +37,7 @@ module type S = sig
     string ->
     ?title:string ->
     ?description:string ->
-    ?output_schema:Yojson.Safe.t ->
+    ?output_schema:Jsont.json ->
     ?annotations:Mcp.Types.Tool.annotation ->
     ?args:(module Common.Json_converter with type t = 'args) ->
     ('args -> Context.t -> (Mcp.Request.Tools.Call.result, string) result) ->
@@ -46,9 +46,9 @@ module type S = sig
        handler] registers a tool.
 
       The handler for the tool is type-safe. You define a record type for the
-      tool's arguments, derive `yojson` serializers for it, and pass them as the
-      `~args` parameter. The SDK handles JSON schema generation, parsing, and
-      validation automatically.
+      tool's arguments, define its [Jsont.t] codec and JSON Schema, and pass
+      them as the [~args] parameter. The SDK validates the schema and decodes
+      arguments with the supplied codec.
 
       @param t The server instance.
       @param name The programmatic name of the tool (e.g., "file/write").

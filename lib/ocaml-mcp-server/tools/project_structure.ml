@@ -2,37 +2,93 @@ let name = "ocaml_project_structure"
 let description = "Return project layout, libraries, executables"
 
 module Args = struct
-  type t = unit [@@deriving yojson]
+  type t = unit
+
+  let json : t Jsont.t = Jsont.null ()
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
-        ("properties", `Assoc []);
-        ("required", `List []);
+        ("type", Mcp.Json.string "object");
+        ("properties", Mcp.Json.object_ []);
+        ("required", Mcp.Json.array []);
       ]
 end
 
 module Output = struct
-  type component_type = Library | Executable [@@deriving yojson]
+  type component_type = Library | Executable
+
+  let component_type_json : component_type Jsont.t =
+    Jsont.map
+      (Jsont.tn ~n:1
+         (Jsont.enum [ ("Library", Library); ("Executable", Executable) ]))
+      ~dec:(fun values -> values.(0))
+      ~enc:(fun value -> [| value |])
 
   type component = {
     component_type : component_type;
     name : string;
     directory : string;
     source_dir : string;
-    public_name : string option; [@yojson.option]
+    public_name : string option;
     modules : string list;
     dependencies : string list;
   }
-  [@@deriving yojson]
+
+  let component_json : component Jsont.t =
+    Jsont.Object.map
+      (fun
+        component_type
+        name
+        directory
+        source_dir
+        public_name
+        modules
+        dependencies
+      ->
+        ({
+           component_type;
+           name;
+           directory;
+           source_dir;
+           public_name;
+           modules;
+           dependencies;
+         }
+          : component))
+    |> Jsont.Object.mem "component_type" component_type_json
+         ~enc:(fun (v : component) -> v.component_type)
+    |> Jsont.Object.mem "name" Jsont.string ~enc:(fun (v : component) -> v.name)
+    |> Jsont.Object.mem "directory" Jsont.string ~enc:(fun (v : component) ->
+        v.directory)
+    |> Jsont.Object.mem "source_dir" Jsont.string ~enc:(fun (v : component) ->
+        v.source_dir)
+    |> Jsont.Object.mem "public_name" (Jsont.option Jsont.string)
+         ~enc:(fun (v : component) -> v.public_name)
+    |> Jsont.Object.mem "modules" (Jsont.list Jsont.string)
+         ~enc:(fun (v : component) -> v.modules)
+    |> Jsont.Object.mem "dependencies" (Jsont.list Jsont.string)
+         ~enc:(fun (v : component) -> v.dependencies)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   type t = {
     project_root : string;
     build_context : string;
     components : component list;
   }
-  [@@deriving yojson]
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun project_root build_context components ->
+        ({ project_root; build_context; components } : t))
+    |> Jsont.Object.mem "project_root" Jsont.string ~enc:(fun (v : t) ->
+        v.project_root)
+    |> Jsont.Object.mem "build_context" Jsont.string ~enc:(fun (v : t) ->
+        v.build_context)
+    |> Jsont.Object.mem "components" (Jsont.list component_json)
+         ~enc:(fun (v : t) -> v.components)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct
@@ -62,8 +118,8 @@ let find_field name fields =
       | Csexp.List [ Csexp.Atom n; _ ] when n = name -> true | _ -> false)
     fields
   |> Option.map (function
-       | Csexp.List [ _; value ] -> value
-       | _ -> failwith "Invalid field")
+    | Csexp.List [ _; value ] -> value
+    | _ -> failwith "Invalid field")
 
 (* Extract the first atom from a list field, with a default *)
 let field_atom name default fields =
@@ -158,15 +214,15 @@ let parse_component context_fields =
           else if is_executable stanza_fields then
             extract_executable_info stanza_data source_tree
             |> List.map (fun (name, public_name, deps, modules) ->
-                   {
-                     Output.component_type = Executable;
-                     name;
-                     directory;
-                     source_dir;
-                     public_name;
-                     modules;
-                     dependencies = deps;
-                   })
+                {
+                  Output.component_type = Executable;
+                  name;
+                  directory;
+                  source_dir;
+                  public_name;
+                  modules;
+                  dependencies = deps;
+                })
           else []
       | _ -> [])
     stanzas
@@ -182,8 +238,8 @@ let parse_dune_describe_output output =
         let components =
           contexts
           |> List.concat_map (function
-               | Csexp.List context_fields -> parse_component context_fields
-               | _ -> [])
+            | Csexp.List context_fields -> parse_component context_fields
+            | _ -> [])
         in
         Ok (root, components)
     | Ok _ -> Error "Invalid dune describe format"

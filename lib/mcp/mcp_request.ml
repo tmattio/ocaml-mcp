@@ -2,199 +2,315 @@ open Mcp_types
 
 module Initialize = struct
   type params = {
-    protocol_version : string; [@key "protocolVersion"]
+    protocol_version : string;
     capabilities : Capabilities.client;
-    client_info : ClientInfo.t; [@key "clientInfo"]
+    client_info : ClientInfo.t;
   }
-  [@@deriving yojson { strict = false }]
+
+  let params_json : params Jsont.t =
+    Jsont.Object.map (fun protocol_version capabilities client_info ->
+        ({ protocol_version; capabilities; client_info } : params))
+    |> Jsont.Object.mem "protocolVersion" Jsont.string ~enc:(fun (v : params) ->
+        v.protocol_version)
+    |> Jsont.Object.mem "capabilities" Capabilities.client_json
+         ~enc:(fun (v : params) -> v.capabilities)
+    |> Jsont.Object.mem "clientInfo" ClientInfo.json ~enc:(fun (v : params) ->
+        v.client_info)
+    |> Jsont.Object.finish |> Json_codec.last_object
 
   type result = {
-    protocol_version : string; [@key "protocolVersion"]
+    protocol_version : string;
     capabilities : Capabilities.server;
-    server_info : ServerInfo.t; [@key "serverInfo"]
-    instructions : string option; [@default None]
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    server_info : ServerInfo.t;
+    instructions : string option;
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  let result_json : result Jsont.t =
+    Jsont.Object.map
+      (fun protocol_version capabilities server_info instructions meta ->
+        ({ protocol_version; capabilities; server_info; instructions; meta }
+          : result))
+    |> Jsont.Object.mem "protocolVersion" Jsont.string ~enc:(fun (v : result) ->
+        v.protocol_version)
+    |> Jsont.Object.mem "capabilities" Capabilities.server_json
+         ~enc:(fun (v : result) -> v.capabilities)
+    |> Jsont.Object.mem "serverInfo" ServerInfo.json ~enc:(fun (v : result) ->
+        v.server_info)
+    |> Jsont.Object.mem "instructions" (Jsont.option Jsont.string)
+         ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : result) ->
+           v.instructions)
+    |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+         ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+    |> Jsont.Object.finish |> Json_codec.last_object
 end
 
 module Resources = struct
   module List = struct
-    type params = {
-      cursor : cursor option; [@default None]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { cursor : cursor option; meta : Jsont.json option }
+
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun cursor meta -> ({ cursor; meta } : params))
+      |> Jsont.Object.mem "cursor" (Jsont.option cursor_json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.cursor)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
 
     type result = {
       resources : Resource.t list;
-      next_cursor : cursor option; [@default None] [@key "nextCursor"]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      next_cursor : cursor option;
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    let result_json : result Jsont.t =
+      Jsont.Object.map (fun resources next_cursor meta ->
+          ({ resources; next_cursor; meta } : result))
+      |> Jsont.Object.mem "resources" (Jsont.list Resource.json)
+           ~enc:(fun (v : result) -> v.resources)
+      |> Jsont.Object.mem "nextCursor" (Jsont.option cursor_json)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : result) ->
+             v.next_cursor)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
   end
 
   module Read = struct
-    type params = {
-      uri : string;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { uri : string; meta : Jsont.json option }
+
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun uri meta -> ({ uri; meta } : params))
+      |> Jsont.Object.mem "uri" Jsont.string ~enc:(fun (v : params) -> v.uri)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
 
     type result = {
       contents : Content.resource_contents list;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    let result_json : result Jsont.t =
+      Jsont.Object.map (fun contents meta -> ({ contents; meta } : result))
+      |> Jsont.Object.mem "contents" (Jsont.list Content.resource_contents_json)
+           ~enc:(fun (v : result) -> v.contents)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
   end
 
   module Subscribe = struct
-    type params = {
-      uri : string;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { uri : string; meta : Jsont.json option }
 
-    type result = unit [@@deriving yojson { strict = false }]
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun uri meta -> ({ uri; meta } : params))
+      |> Jsont.Object.mem "uri" Jsont.string ~enc:(fun (v : params) -> v.uri)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
+
+    type result = unit
+
+    let result_json : result Jsont.t = Jsont.null ()
   end
 
   module Unsubscribe = struct
-    type params = {
-      uri : string;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { uri : string; meta : Jsont.json option }
 
-    type result = unit [@@deriving yojson { strict = false }]
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun uri meta -> ({ uri; meta } : params))
+      |> Jsont.Object.mem "uri" Jsont.string ~enc:(fun (v : params) -> v.uri)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
+
+    type result = unit
+
+    let result_json : result Jsont.t = Jsont.null ()
   end
 
   module Templates = struct
     module List = struct
-      type params = {
-        cursor : cursor option; [@default None]
-        meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-      }
-      [@@deriving yojson { strict = false }]
+      type params = { cursor : cursor option; meta : Jsont.json option }
+
+      let params_json : params Jsont.t =
+        Jsont.Object.map (fun cursor meta -> ({ cursor; meta } : params))
+        |> Jsont.Object.mem "cursor" (Jsont.option cursor_json) ~dec_absent:None
+             ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.cursor)
+        |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+             ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+        |> Jsont.Object.finish |> Json_codec.last_object
 
       type result = {
-        resource_templates : Resource.template list; [@key "resourceTemplates"]
-        next_cursor : cursor option; [@default None] [@key "nextCursor"]
-        meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+        resource_templates : Resource.template list;
+        next_cursor : cursor option;
+        meta : Jsont.json option;
       }
-      [@@deriving yojson { strict = false }]
+
+      let result_json : result Jsont.t =
+        Jsont.Object.map (fun resource_templates next_cursor meta ->
+            ({ resource_templates; next_cursor; meta } : result))
+        |> Jsont.Object.mem "resourceTemplates"
+             (Jsont.list Resource.template_json) ~enc:(fun (v : result) ->
+               v.resource_templates)
+        |> Jsont.Object.mem "nextCursor" (Jsont.option cursor_json)
+             ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : result) ->
+               v.next_cursor)
+        |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+             ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+        |> Jsont.Object.finish |> Json_codec.last_object
     end
   end
 end
 
 module Prompts = struct
   module List = struct
-    type params = {
-      cursor : cursor option; [@default None]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { cursor : cursor option; meta : Jsont.json option }
+
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun cursor meta -> ({ cursor; meta } : params))
+      |> Jsont.Object.mem "cursor" (Jsont.option cursor_json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.cursor)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
 
     type result = {
       prompts : Prompt.t list;
-      next_cursor : cursor option; [@default None] [@key "nextCursor"]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      next_cursor : cursor option;
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    let result_json : result Jsont.t =
+      Jsont.Object.map (fun prompts next_cursor meta ->
+          ({ prompts; next_cursor; meta } : result))
+      |> Jsont.Object.mem "prompts" (Jsont.list Prompt.json)
+           ~enc:(fun (v : result) -> v.prompts)
+      |> Jsont.Object.mem "nextCursor" (Jsont.option cursor_json)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : result) ->
+             v.next_cursor)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
   end
 
   module Get = struct
     type params = {
       name : string;
-      arguments : (string * string) list option; [@default None]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      arguments : (string * string) list option;
+      meta : Jsont.json option;
     }
 
-    let params_to_yojson params =
-      let fields = [ ("name", `String params.name) ] in
-      let fields =
-        match params.arguments with
-        | None -> fields
-        | Some args ->
-            ( "arguments",
-              `Assoc (Stdlib.List.map (fun (k, v) -> (k, `String v)) args) )
-            :: fields
+    let params_json : params Jsont.t =
+      let arguments_json =
+        Jsont.map Jsont.json
+          ~dec:(fun value ->
+            match
+              Json_codec.decode (Json_codec.assoc_json Jsont.string) value
+            with
+            | Ok args -> Some args
+            | Error _ -> None)
+          ~enc:(function
+            | None -> Jsont.Json.null ()
+            | Some args ->
+                Json_codec.encode (Json_codec.assoc_json Jsont.string) args)
       in
-      let fields =
-        match params.meta with
-        | None -> fields
-        | Some meta -> ("_meta", meta) :: fields
-      in
-      `Assoc fields
-
-    let params_of_yojson = function
-      | `Assoc fields -> (
-          match Stdlib.List.assoc_opt "name" fields with
-          | Some (`String name) ->
-              let arguments =
-                match Stdlib.List.assoc_opt "arguments" fields with
-                | Some (`Assoc args) -> (
-                    let parse_args =
-                      Stdlib.List.fold_left
-                        (fun acc (k, v) ->
-                          match acc with
-                          | Error _ -> acc
-                          | Ok args -> (
-                              match v with
-                              | `String s -> Ok ((k, s) :: args)
-                              | _ -> Error "argument values must be strings"))
-                        (Ok []) args
-                    in
-                    match parse_args with
-                    | Ok args -> Some (Stdlib.List.rev args)
-                    | Error _ -> None)
-                | _ -> None
-              in
-              let meta = Stdlib.List.assoc_opt "_meta" fields in
-              Ok { name; arguments; meta }
-          | _ -> Error "Invalid prompts/get params")
-      | _ -> Error "prompts/get params must be an object"
+      Jsont.Object.map (fun name arguments meta -> { name; arguments; meta })
+      |> Jsont.Object.mem "name" Jsont.string ~enc:(fun v -> v.name)
+      |> Jsont.Object.mem "arguments" arguments_json ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun v -> v.arguments)
+      |> Jsont.Object.opt_mem "_meta" Jsont.json ~enc:(fun v -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.first_object
 
     type result = {
-      description : string option; [@default None]
+      description : string option;
       messages : Prompt.message list;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    let result_json : result Jsont.t =
+      Jsont.Object.map (fun description messages meta ->
+          ({ description; messages; meta } : result))
+      |> Jsont.Object.mem "description" (Jsont.option Jsont.string)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : result) ->
+             v.description)
+      |> Jsont.Object.mem "messages" (Jsont.list Prompt.message_json)
+           ~enc:(fun (v : result) -> v.messages)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
   end
 end
 
 module Tools = struct
   module List = struct
-    type params = {
-      cursor : cursor option; [@default None]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { cursor : cursor option; meta : Jsont.json option }
+
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun cursor meta -> ({ cursor; meta } : params))
+      |> Jsont.Object.mem "cursor" (Jsont.option cursor_json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.cursor)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
 
     type result = {
       tools : Tool.t list;
-      next_cursor : cursor option; [@default None] [@key "nextCursor"]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      next_cursor : cursor option;
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    let result_json : result Jsont.t =
+      Jsont.Object.map (fun tools next_cursor meta ->
+          ({ tools; next_cursor; meta } : result))
+      |> Jsont.Object.mem "tools" (Jsont.list Tool.json)
+           ~enc:(fun (v : result) -> v.tools)
+      |> Jsont.Object.mem "nextCursor" (Jsont.option cursor_json)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : result) ->
+             v.next_cursor)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
   end
 
   module Call = struct
     type params = {
       name : string;
-      arguments : Yojson.Safe.t option;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      arguments : Jsont.json option;
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun name arguments meta ->
+          ({ name; arguments; meta } : params))
+      |> Jsont.Object.mem "name" Jsont.string ~enc:(fun (v : params) -> v.name)
+      |> Jsont.Object.mem "arguments" (Jsont.option Jsont.json)
+           ~enc:(fun (v : params) -> v.arguments)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
 
     type result = {
       content : Content.t list;
-      is_error : bool option; [@default None] [@key "isError"]
-      structured_content : Yojson.Safe.t option;
-          [@default None] [@key "structuredContent"]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      is_error : bool option;
+      structured_content : Jsont.json option;
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    let result_json : result Jsont.t =
+      Jsont.Object.map (fun content is_error structured_content meta ->
+          ({ content; is_error; structured_content; meta } : result))
+      |> Jsont.Object.mem "content" (Jsont.list Content.json)
+           ~enc:(fun (v : result) -> v.content)
+      |> Jsont.Object.mem "isError" (Jsont.option Jsont.bool) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.is_error)
+      |> Jsont.Object.mem "structuredContent" (Jsont.option Jsont.json)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : result) ->
+             v.structured_content)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
   end
 end
 
@@ -203,25 +319,85 @@ module Sampling = struct
     type params = {
       messages : SamplingMessage.t list;
       model_preferences : ModelPreferences.t option;
-          [@default None] [@key "modelPreferences"]
-      system_prompt : string option; [@default None] [@key "systemPrompt"]
-      include_context : string option; [@default None] [@key "includeContext"]
-      temperature : float option; [@default None]
-      max_tokens : int option; [@default None] [@key "maxTokens"]
+      system_prompt : string option;
+      include_context : string option;
+      temperature : float option;
+      max_tokens : int option;
       stop_sequences : string list option;
-          [@default None] [@key "stopSequences"]
-      metadata : Yojson.Safe.t option; [@default None]
+      metadata : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    let params_json : params Jsont.t =
+      Jsont.Object.map
+        (fun
+          messages
+          model_preferences
+          system_prompt
+          include_context
+          temperature
+          max_tokens
+          stop_sequences
+          metadata
+        ->
+          ({
+             messages;
+             model_preferences;
+             system_prompt;
+             include_context;
+             temperature;
+             max_tokens;
+             stop_sequences;
+             metadata;
+           }
+            : params))
+      |> Jsont.Object.mem "messages" (Jsont.list SamplingMessage.json)
+           ~enc:(fun (v : params) -> v.messages)
+      |> Jsont.Object.mem "modelPreferences"
+           (Jsont.option ModelPreferences.json)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : params) ->
+             v.model_preferences)
+      |> Jsont.Object.mem "systemPrompt" (Jsont.option Jsont.string)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : params) ->
+             v.system_prompt)
+      |> Jsont.Object.mem "includeContext" (Jsont.option Jsont.string)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : params) ->
+             v.include_context)
+      |> Jsont.Object.mem "temperature" (Jsont.option Json_codec.number_json)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : params) ->
+             v.temperature)
+      |> Jsont.Object.mem "maxTokens" (Jsont.option Json_codec.integer_json)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : params) ->
+             v.max_tokens)
+      |> Jsont.Object.mem "stopSequences"
+           (Jsont.option (Jsont.list Jsont.string))
+           ~dec_absent:None ~enc_omit:Option.is_none
+           ~enc:(fun (v : params) -> v.stop_sequences)
+      |> Jsont.Object.mem "metadata" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.metadata)
+      |> Jsont.Object.finish |> Json_codec.last_object
 
     type result = {
       role : string;
       content : Content.t;
       model : string;
-      stop_reason : string option; [@default None] [@key "stopReason"]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      stop_reason : string option;
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
+
+    let result_json : result Jsont.t =
+      Jsont.Object.map (fun role content model stop_reason meta ->
+          ({ role; content; model; stop_reason; meta } : result))
+      |> Jsont.Object.mem "role" Jsont.string ~enc:(fun (v : result) -> v.role)
+      |> Jsont.Object.mem "content" Content.json ~enc:(fun (v : result) ->
+          v.content)
+      |> Jsont.Object.mem "model" Jsont.string ~enc:(fun (v : result) ->
+          v.model)
+      |> Jsont.Object.mem "stopReason" (Jsont.option Jsont.string)
+           ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : result) ->
+             v.stop_reason)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
   end
 end
 
@@ -229,119 +405,125 @@ module Elicitation = struct
   module Create = struct
     type params = {
       message : string;
-      requested_schema : ElicitationSchema.t; [@key "requestedSchema"]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      requested_schema : ElicitationSchema.t;
+      meta : Jsont.json option;
     }
 
-    let params_to_yojson params =
-      let fields =
-        [
-          ("message", `String params.message);
-          ( "requestedSchema",
-            ElicitationSchema.to_yojson params.requested_schema );
-        ]
-      in
-      let fields =
-        match params.meta with
-        | None -> fields
-        | Some meta -> ("_meta", meta) :: fields
-      in
-      `Assoc fields
-
-    let params_of_yojson = function
-      | `Assoc fields -> (
-          match
-            ( Stdlib.List.assoc_opt "message" fields,
-              Stdlib.List.assoc_opt "requestedSchema" fields )
-          with
-          | Some (`String message), Some schema_json -> (
-              match ElicitationSchema.of_yojson schema_json with
-              | Ok requested_schema ->
-                  let meta = Stdlib.List.assoc_opt "_meta" fields in
-                  Ok { message; requested_schema; meta }
-              | Error e -> Error ("Invalid requestedSchema: " ^ e))
-          | _ -> Error "Invalid elicitation params")
-      | _ -> Error "Elicitation params must be an object"
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun message requested_schema meta ->
+          { message; requested_schema; meta })
+      |> Jsont.Object.mem "message" Jsont.string ~enc:(fun v -> v.message)
+      |> Jsont.Object.mem "requestedSchema" ElicitationSchema.json
+           ~enc:(fun v -> v.requested_schema)
+      |> Jsont.Object.opt_mem "_meta" Jsont.json ~enc:(fun v -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.first_object
 
     type result = {
       action : string;
-      content : (string * Yojson.Safe.t) list option; [@default None]
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      content : (string * Jsont.json) list option;
+      meta : Jsont.json option;
     }
 
-    let result_to_yojson result =
-      let fields = [ ("action", `String result.action) ] in
-      let fields =
-        match result.content with
-        | None -> fields
-        | Some content -> ("content", `Assoc content) :: fields
+    let result_json : result Jsont.t =
+      let content_json =
+        Jsont.map Jsont.json
+          ~dec:(fun value ->
+            match
+              Json_codec.decode (Json_codec.assoc_json Jsont.json) value
+            with
+            | Ok content -> Some content
+            | Error _ -> None)
+          ~enc:(function
+            | None -> Jsont.Json.null ()
+            | Some content ->
+                Json_codec.encode (Json_codec.assoc_json Jsont.json) content)
       in
-      `Assoc fields
-
-    let result_of_yojson = function
-      | `Assoc fields -> (
-          match Stdlib.List.assoc_opt "action" fields with
-          | Some (`String action) ->
-              let content =
-                match Stdlib.List.assoc_opt "content" fields with
-                | Some (`Assoc content) -> Some content
-                | _ -> None
-              in
-              let meta =
-                match Stdlib.List.assoc_opt "_meta" fields with
-                | Some meta -> Some meta
-                | None -> None
-              in
-              Ok { action; content; meta }
-          | _ -> Error "Invalid elicitation result")
-      | _ -> Error "Elicitation result must be an object"
+      Jsont.Object.map (fun action content meta -> { action; content; meta })
+      |> Jsont.Object.mem "action" Jsont.string ~enc:(fun v -> v.action)
+      |> Jsont.Object.mem "content" content_json ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun v -> v.content)
+      |> Jsont.Object.mem "_meta" (Jsont.some Jsont.json) ~dec_absent:None
+           ~enc_omit:(fun _ -> true)
+           ~enc:(fun v -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.first_object
   end
 end
 
 module Logging = struct
   module SetLevel = struct
-    type params = {
-      level : LogLevel.t;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    type params = { level : LogLevel.t; meta : Jsont.json option }
 
-    type result = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun level meta -> ({ level; meta } : params))
+      |> Jsont.Object.mem "level" LogLevel.json ~enc:(fun (v : params) ->
+          v.level)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
+
+    type result = OnlyMetaParams.t
+
+    let result_json : result Jsont.t = OnlyMetaParams.json
   end
 end
 
 module Completion = struct
   module Complete = struct
     type params = {
-      ref_ : CompletionReference.t; [@key "ref"]
+      ref_ : CompletionReference.t;
       argument : CompletionArgument.t;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+      meta : Jsont.json option;
     }
-    [@@deriving yojson { strict = false }]
 
-    type result = {
-      completion : Completion.t;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    let params_json : params Jsont.t =
+      Jsont.Object.map (fun ref_ argument meta ->
+          ({ ref_; argument; meta } : params))
+      |> Jsont.Object.mem "ref" CompletionReference.json
+           ~enc:(fun (v : params) -> v.ref_)
+      |> Jsont.Object.mem "argument" CompletionArgument.json
+           ~enc:(fun (v : params) -> v.argument)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : params) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
+
+    type result = { completion : Completion.t; meta : Jsont.json option }
+
+    let result_json : result Jsont.t =
+      Jsont.Object.map (fun completion meta -> ({ completion; meta } : result))
+      |> Jsont.Object.mem "completion" Completion.json ~enc:(fun (v : result) ->
+          v.completion)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
   end
 end
 
 module Roots = struct
   module List = struct
-    type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+    type params = OnlyMetaParams.t
 
-    type result = {
-      roots : Root.t list;
-      meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-    }
-    [@@deriving yojson { strict = false }]
+    let params_json : params Jsont.t = OnlyMetaParams.json
+
+    type result = { roots : Root.t list; meta : Jsont.json option }
+
+    let result_json : result Jsont.t =
+      Jsont.Object.map (fun roots meta -> ({ roots; meta } : result))
+      |> Jsont.Object.mem "roots" (Jsont.list Root.json)
+           ~enc:(fun (v : result) -> v.roots)
+      |> Jsont.Object.mem "_meta" (Jsont.option Jsont.json) ~dec_absent:None
+           ~enc_omit:Option.is_none ~enc:(fun (v : result) -> v.meta)
+      |> Jsont.Object.finish |> Json_codec.last_object
   end
 end
 
 module Ping = struct
-  type params = OnlyMetaParams.t [@@deriving yojson { strict = false }]
-  type result = OnlyMetaParams.t [@@deriving yojson { strict = false }]
+  type params = OnlyMetaParams.t
+
+  let params_json : params Jsont.t = OnlyMetaParams.json
+
+  type result = OnlyMetaParams.t
+
+  let result_json : result Jsont.t = OnlyMetaParams.json
 end
 
 type t =
@@ -380,92 +562,97 @@ let method_name = function
   | RootsList _ -> "roots/list"
   | Ping _ -> "ping"
 
-let params_to_yojson = function
-  | Initialize params -> Initialize.params_to_yojson params
-  | ResourcesList params -> Resources.List.params_to_yojson params
-  | ResourcesRead params -> Resources.Read.params_to_yojson params
-  | ResourcesSubscribe params -> Resources.Subscribe.params_to_yojson params
-  | ResourcesUnsubscribe params -> Resources.Unsubscribe.params_to_yojson params
+let params_to_json = function
+  | Initialize params -> Json_codec.encode Initialize.params_json params
+  | ResourcesList params -> Json_codec.encode Resources.List.params_json params
+  | ResourcesRead params -> Json_codec.encode Resources.Read.params_json params
+  | ResourcesSubscribe params ->
+      Json_codec.encode Resources.Subscribe.params_json params
+  | ResourcesUnsubscribe params ->
+      Json_codec.encode Resources.Unsubscribe.params_json params
   | ResourcesTemplatesList params ->
-      Resources.Templates.List.params_to_yojson params
-  | PromptsList params -> Prompts.List.params_to_yojson params
-  | PromptsGet params -> Prompts.Get.params_to_yojson params
-  | ToolsList params -> Tools.List.params_to_yojson params
-  | ToolsCall params -> Tools.Call.params_to_yojson params
+      Json_codec.encode Resources.Templates.List.params_json params
+  | PromptsList params -> Json_codec.encode Prompts.List.params_json params
+  | PromptsGet params -> Json_codec.encode Prompts.Get.params_json params
+  | ToolsList params -> Json_codec.encode Tools.List.params_json params
+  | ToolsCall params -> Json_codec.encode Tools.Call.params_json params
   | SamplingCreateMessage params ->
-      Sampling.CreateMessage.params_to_yojson params
-  | ElicitationCreate params -> Elicitation.Create.params_to_yojson params
-  | LoggingSetLevel params -> Logging.SetLevel.params_to_yojson params
-  | CompletionComplete params -> Completion.Complete.params_to_yojson params
-  | RootsList params -> Roots.List.params_to_yojson params
-  | Ping params -> Ping.params_to_yojson params
+      Json_codec.encode Sampling.CreateMessage.params_json params
+  | ElicitationCreate params ->
+      Json_codec.encode Elicitation.Create.params_json params
+  | LoggingSetLevel params ->
+      Json_codec.encode Logging.SetLevel.params_json params
+  | CompletionComplete params ->
+      Json_codec.encode Completion.Complete.params_json params
+  | RootsList params -> Json_codec.encode Roots.List.params_json params
+  | Ping params -> Json_codec.encode Ping.params_json params
 
-let of_jsonrpc (method_ : string) (params : Yojson.Safe.t option) :
+let of_jsonrpc (method_ : string) (params : Jsont.json option) :
     (t, string) result =
-  let params = Option.value params ~default:(`Assoc []) in
+  let params = Option.value params ~default:(Jsont.Json.object' []) in
   match method_ with
   | "initialize" -> (
-      match Initialize.params_of_yojson params with
+      match Json_codec.decode Initialize.params_json params with
       | Ok params -> Ok (Initialize params)
       | Error e -> Error e)
   | "resources/list" -> (
-      match Resources.List.params_of_yojson params with
+      match Json_codec.decode Resources.List.params_json params with
       | Ok params -> Ok (ResourcesList params)
       | Error e -> Error e)
   | "resources/read" -> (
-      match Resources.Read.params_of_yojson params with
+      match Json_codec.decode Resources.Read.params_json params with
       | Ok params -> Ok (ResourcesRead params)
       | Error e -> Error e)
   | "resources/subscribe" -> (
-      match Resources.Subscribe.params_of_yojson params with
+      match Json_codec.decode Resources.Subscribe.params_json params with
       | Ok params -> Ok (ResourcesSubscribe params)
       | Error e -> Error e)
   | "resources/unsubscribe" -> (
-      match Resources.Unsubscribe.params_of_yojson params with
+      match Json_codec.decode Resources.Unsubscribe.params_json params with
       | Ok params -> Ok (ResourcesUnsubscribe params)
       | Error e -> Error e)
   | "resources/templates/list" -> (
-      match Resources.Templates.List.params_of_yojson params with
+      match Json_codec.decode Resources.Templates.List.params_json params with
       | Ok params -> Ok (ResourcesTemplatesList params)
       | Error e -> Error e)
   | "prompts/list" -> (
-      match Prompts.List.params_of_yojson params with
+      match Json_codec.decode Prompts.List.params_json params with
       | Ok params -> Ok (PromptsList params)
       | Error e -> Error e)
   | "prompts/get" -> (
-      match Prompts.Get.params_of_yojson params with
+      match Json_codec.decode Prompts.Get.params_json params with
       | Ok params -> Ok (PromptsGet params)
       | Error e -> Error e)
   | "tools/list" -> (
-      match Tools.List.params_of_yojson params with
+      match Json_codec.decode Tools.List.params_json params with
       | Ok params -> Ok (ToolsList params)
       | Error e -> Error e)
   | "tools/call" -> (
-      match Tools.Call.params_of_yojson params with
+      match Json_codec.decode Tools.Call.params_json params with
       | Ok params -> Ok (ToolsCall params)
       | Error e -> Error e)
   | "sampling/createMessage" -> (
-      match Sampling.CreateMessage.params_of_yojson params with
+      match Json_codec.decode Sampling.CreateMessage.params_json params with
       | Ok params -> Ok (SamplingCreateMessage params)
       | Error e -> Error e)
   | "elicitation/create" -> (
-      match Elicitation.Create.params_of_yojson params with
+      match Json_codec.decode Elicitation.Create.params_json params with
       | Ok params -> Ok (ElicitationCreate params)
       | Error e -> Error e)
   | "logging/setLevel" -> (
-      match Logging.SetLevel.params_of_yojson params with
+      match Json_codec.decode Logging.SetLevel.params_json params with
       | Ok params -> Ok (LoggingSetLevel params)
       | Error e -> Error e)
   | "completion/complete" -> (
-      match Completion.Complete.params_of_yojson params with
+      match Json_codec.decode Completion.Complete.params_json params with
       | Ok params -> Ok (CompletionComplete params)
       | Error e -> Error e)
   | "roots/list" -> (
-      match Roots.List.params_of_yojson params with
+      match Json_codec.decode Roots.List.params_json params with
       | Ok params -> Ok (RootsList params)
       | Error e -> Error e)
   | "ping" -> (
-      match Ping.params_of_yojson params with
+      match Json_codec.decode Ping.params_json params with
       | Ok params -> Ok (Ping params)
       | Error e -> Error e)
   | _ -> Error (Printf.sprintf "Unknown method: %s" method_)
@@ -488,22 +675,27 @@ type response =
   | RootsList of Roots.List.result
   | Ping of Ping.result
 
-let response_to_yojson = function
-  | Initialize result -> Initialize.result_to_yojson result
-  | ResourcesList result -> Resources.List.result_to_yojson result
-  | ResourcesRead result -> Resources.Read.result_to_yojson result
-  | ResourcesSubscribe result -> Resources.Subscribe.result_to_yojson result
-  | ResourcesUnsubscribe result -> Resources.Unsubscribe.result_to_yojson result
+let response_to_json = function
+  | Initialize result -> Json_codec.encode Initialize.result_json result
+  | ResourcesList result -> Json_codec.encode Resources.List.result_json result
+  | ResourcesRead result -> Json_codec.encode Resources.Read.result_json result
+  | ResourcesSubscribe result ->
+      Json_codec.encode Resources.Subscribe.result_json result
+  | ResourcesUnsubscribe result ->
+      Json_codec.encode Resources.Unsubscribe.result_json result
   | ResourcesTemplatesList result ->
-      Resources.Templates.List.result_to_yojson result
-  | PromptsList result -> Prompts.List.result_to_yojson result
-  | PromptsGet result -> Prompts.Get.result_to_yojson result
-  | ToolsList result -> Tools.List.result_to_yojson result
-  | ToolsCall result -> Tools.Call.result_to_yojson result
+      Json_codec.encode Resources.Templates.List.result_json result
+  | PromptsList result -> Json_codec.encode Prompts.List.result_json result
+  | PromptsGet result -> Json_codec.encode Prompts.Get.result_json result
+  | ToolsList result -> Json_codec.encode Tools.List.result_json result
+  | ToolsCall result -> Json_codec.encode Tools.Call.result_json result
   | SamplingCreateMessage result ->
-      Sampling.CreateMessage.result_to_yojson result
-  | ElicitationCreate result -> Elicitation.Create.result_to_yojson result
-  | LoggingSetLevel result -> Logging.SetLevel.result_to_yojson result
-  | CompletionComplete result -> Completion.Complete.result_to_yojson result
-  | RootsList result -> Roots.List.result_to_yojson result
-  | Ping result -> Ping.result_to_yojson result
+      Json_codec.encode Sampling.CreateMessage.result_json result
+  | ElicitationCreate result ->
+      Json_codec.encode Elicitation.Create.result_json result
+  | LoggingSetLevel result ->
+      Json_codec.encode Logging.SetLevel.result_json result
+  | CompletionComplete result ->
+      Json_codec.encode Completion.Complete.result_json result
+  | RootsList result -> Json_codec.encode Roots.List.result_json result
+  | Ping result -> Json_codec.encode Ping.result_json result

@@ -10,7 +10,7 @@ Start the MCP server for the test project:
   ocaml-mcp-server: [INFO] Received request: initialize (id: 0)
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Received request: tools/call (id: 1)
-  ocaml-mcp-server: [ERROR] Tool ocaml_project_structure failed: Failed to parse arguments: Project_structure.Args.t
+  ocaml-mcp-server: [ERROR] Tool ocaml_project_structure failed: Failed to parse arguments: Expected null but found object
   ocaml-mcp-server: [DEBUG] Sending response
   ocaml-mcp-server: [INFO] Client disconnected
   ocaml-mcp-server: [DEBUG] Server loop ended

@@ -47,15 +47,14 @@ module type S = sig
   module Args : sig
     type t
 
-    val of_yojson : Yojson.Safe.t -> (t, string) Result.t
-    val to_yojson : t -> Yojson.Safe.t
-    val schema : unit -> Yojson.Safe.t
+    val json : t Jsont.t
+    val schema : unit -> Jsont.json
   end
 
   module Output : sig
     type t
 
-    val to_yojson : t -> Yojson.Safe.t
+    val json : t Jsont.t
   end
 
   module Error : sig

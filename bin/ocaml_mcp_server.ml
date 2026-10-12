@@ -115,7 +115,8 @@ let mcp_log_level =
     in
     let print ppf level =
       Format.pp_print_string ppf
-        (Yojson.Safe.to_string (Mcp.Types.LogLevel.to_yojson level))
+        (Mcp.Json.to_string
+           (Mcp.Types.Json_codec.encode Mcp.Types.LogLevel.json level))
     in
     Arg.conv (parse, print)
   in

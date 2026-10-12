@@ -9,15 +9,15 @@ open Jsonrpc
 type incoming_message =
   | Request of Id.t * Mcp_request.t
   | Notification of Mcp_notification.t
-  | Response of Id.t * (Yojson.Safe.t, Response.Error.t) result
+  | Response of Id.t * (Jsont.json, Response.Error.t) result
   | Batch_request of incoming_message list
   | Batch_response of incoming_message list
       (** Messages received from remote endpoint. *)
 
 type outgoing_message =
-  | Request of Id.t * string * Yojson.Safe.t option
-  | Notification of string * Yojson.Safe.t option
-  | Response of Id.t * (Yojson.Safe.t, Response.Error.t) result
+  | Request of Id.t * string * Jsont.json option
+  | Notification of string * Jsont.json option
+  | Response of Id.t * (Jsont.json, Response.Error.t) result
   | Batch_response of outgoing_message list
       (** Messages to send to remote endpoint. *)
 
@@ -43,7 +43,7 @@ val error_to_outgoing :
   id:Id.t ->
   code:int ->
   message:string ->
-  ?data:Yojson.Safe.t ->
+  ?data:Jsont.json ->
   unit ->
   outgoing_message
 (** [error_to_outgoing ~id ~code ~message ?data ()] creates error response.

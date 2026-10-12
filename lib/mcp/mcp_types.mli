@@ -1,3 +1,15 @@
+module Json_codec : sig
+  val decode : 'a Jsont.t -> Jsont.json -> ('a, string) result
+  val encode : 'a Jsont.t -> 'a -> Jsont.json
+  val integer_json : int Jsont.t
+  val number_json : float Jsont.t
+  val assoc_json : 'a Jsont.t -> (string * 'a) list Jsont.t
+  val find_member : string -> Jsont.json -> Jsont.json option
+  val object' : (string * Jsont.json) list -> Jsont.json
+  val first_object : 'a Jsont.t -> 'a Jsont.t
+  val last_object : 'a Jsont.t -> 'a Jsont.t
+end
+
 (** MCP protocol types and data structures.
 
     This module defines the core types used throughout the Model Context
@@ -22,17 +34,25 @@ module Protocol : sig
 end
 
 (** Request identifier for JSON-RPC. Can be string or integer. *)
-type request_id = String of string | Int of int [@@deriving yojson]
+type request_id = String of string | Int of int
+
+val request_id_json : request_id Jsont.t
 
 (** Token for tracking long-running operations. Can be string or integer. *)
-type progress_token = String of string | Int of int [@@deriving yojson]
+type progress_token = String of string | Int of int
 
-type cursor = string [@@deriving yojson]
+val progress_token_json : progress_token Jsont.t
+
+type cursor = string
+
+val cursor_json : cursor Jsont.t
 (** Opaque pagination cursor. *)
 
 (** JSON-RPC error codes. *)
 module ErrorCode : sig
-  type t = int [@@deriving yojson]
+  type t = int
+
+  val json : t Jsont.t
   (** Numeric error code. *)
 
   val connection_closed : t
@@ -57,17 +77,15 @@ module ErrorCode : sig
   (** [internal_error] indicates server-side error. *)
 end
 
-type error = {
-  code : ErrorCode.t;
-  message : string;
-  data : Yojson.Safe.t option;
-}
-[@@deriving yojson { strict = false }]
+type error = { code : ErrorCode.t; message : string; data : Jsont.json option }
+
+val error_json : error Jsont.t
 (** JSON-RPC error response. *)
 
 module OnlyMetaParams : sig
-  type t = { meta : Yojson.Safe.t option [@default None] [@key "_meta"] }
-  [@@deriving yojson { strict = false }]
+  type t = { meta : Jsont.json option }
+
+  val json : t Jsont.t
   (** Parameters that can be either unit, or only _meta. *)
 end
 
@@ -83,35 +101,35 @@ module LogLevel : sig
     | Critical
     | Alert
     | Emergency
-  [@@deriving yojson]
+
+  val json : t Jsont.t
 end
 
 (** Content types for messages and resources. *)
 module Content : sig
-  type text = {
-    type_ : string;
-    text : string;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-  }
-  [@@deriving yojson { strict = false }]
+  type text = { type_ : string; text : string; meta : Jsont.json option }
+
+  val text_json : text Jsont.t
   (** Text content with MIME type. *)
 
   type image = {
     type_ : string;
     data : string;
     mime_type : string;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val image_json : image Jsont.t
   (** Base64-encoded image with MIME type. *)
 
   type audio = {
     type_ : string;
     data : string;
     mime_type : string;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val audio_json : audio Jsont.t
   (** Base64-encoded audio with MIME type. *)
 
   type resource_link = {
@@ -122,10 +140,11 @@ module Content : sig
     description : string option;
     mime_type : string option;
     size : int option;
-    annotations : Yojson.Safe.t option;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    annotations : Jsont.json option;
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val resource_link_json : resource_link Jsont.t
   (** Reference to external resource. *)
 
   type resource_contents = {
@@ -133,17 +152,19 @@ module Content : sig
     mime_type : string option;
     text : string option;
     blob : string option;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val resource_contents_json : resource_contents Jsont.t
   (** Resource contents with either text or base64 blob. *)
 
   type embedded_resource = {
     type_ : string;
     resource : resource_contents;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val embedded_resource_json : embedded_resource Jsont.t
   (** Inline resource with contents. *)
 
   (** Content variants for different media types. *)
@@ -153,7 +174,8 @@ module Content : sig
     | Audio of audio
     | ResourceLink of resource_link
     | EmbeddedResource of embedded_resource
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
 end
 
 (** Resource descriptions and templates. *)
@@ -165,10 +187,11 @@ module Resource : sig
     description : string option;
     mime_type : string option;
     size : int option;
-    annotations : Yojson.Safe.t option;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    annotations : Jsont.json option;
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Resource with URI and metadata. *)
 
   type template = {
@@ -177,10 +200,11 @@ module Resource : sig
     title : string option;
     description : string option;
     mime_type : string option;
-    annotations : Yojson.Safe.t option;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    annotations : Jsont.json option;
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val template_json : template Jsont.t
   (** Resource template with URI pattern. *)
 end
 
@@ -193,19 +217,21 @@ module Tool : sig
     idempotent : bool option;
     open_world : bool option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val annotation_json : annotation Jsont.t
   (** Tool behavior annotations. *)
 
   type t = {
     name : string;
     title : string option;
     description : string option;
-    input_schema : Yojson.Safe.t;
-    output_schema : Yojson.Safe.t option;
+    input_schema : Jsont.json;
+    output_schema : Jsont.json option;
     annotations : annotation option;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Tool with JSON Schema for input/output. *)
 end
 
@@ -217,7 +243,8 @@ module Prompt : sig
     description : string option;
     required : bool option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val argument_json : argument Jsont.t
   (** Prompt argument specification. *)
 
   type t = {
@@ -225,97 +252,108 @@ module Prompt : sig
     title : string option;
     description : string option;
     arguments : argument list option;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
+    meta : Jsont.json option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Prompt template with arguments. *)
 
   type message = { role : string; content : Content.t }
-  [@@deriving yojson { strict = false }]
+
+  val message_json : message Jsont.t
   (** Message with role and content. *)
 end
 
 (** Client and server capabilities. *)
 module Capabilities : sig
   type roots = { list_changed : bool option }
-  [@@deriving yojson { strict = false }]
+
+  val roots_json : roots Jsont.t
   (** Root directory change notifications. *)
 
   type prompts = { list_changed : bool option }
-  [@@deriving yojson { strict = false }]
+
+  val prompts_json : prompts Jsont.t
   (** Prompt list change notifications. *)
 
   type resources = { subscribe : bool option; list_changed : bool option }
-  [@@deriving yojson { strict = false }]
+
+  val resources_json : resources Jsont.t
   (** Resource subscription and change notifications. *)
 
   type tools = { list_changed : bool option }
-  [@@deriving yojson { strict = false }]
+
+  val tools_json : tools Jsont.t
   (** Tool list change notifications. *)
 
   type client = {
-    experimental : Yojson.Safe.t option;
-    sampling : Yojson.Safe.t option;
-    elicitation : Yojson.Safe.t option;
+    experimental : Jsont.json option;
+    sampling : Jsont.json option;
+    elicitation : Jsont.json option;
     roots : roots option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val client_json : client Jsont.t
   (** Client-supported capabilities. *)
 
   type server = {
-    experimental : Yojson.Safe.t option;
-    logging : Yojson.Safe.t option;
-    completions : Yojson.Safe.t option;
+    experimental : Jsont.json option;
+    logging : Jsont.json option;
+    completions : Jsont.json option;
     prompts : prompts option;
     resources : resources option;
     tools : tools option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val server_json : server Jsont.t
   (** Server-supported capabilities. *)
 end
 
 (** Implementation information. *)
 module Implementation : sig
   type t = { name : string; version : string }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Implementation name and version. *)
 end
 
 (** Client information. *)
 module ClientInfo : sig
   type t = { name : string; version : string }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Client name and version. *)
 end
 
 (** Server information. *)
 module ServerInfo : sig
   type t = { name : string; version : string }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Server name and version. *)
 end
 
 (** Root directory information. *)
 module Root : sig
-  type t = {
-    uri : string;
-    name : string option;
-    meta : Yojson.Safe.t option; [@default None] [@key "_meta"]
-  }
-  [@@deriving yojson { strict = false }]
+  type t = { uri : string; name : string option; meta : Jsont.json option }
+
+  val json : t Jsont.t
   (** Root directory URI with optional name. *)
 end
 
 (** Sampling message for model interactions. *)
 module SamplingMessage : sig
   type t = { role : string; content : Content.t }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Message with role and content for sampling. *)
 end
 
 (** Model hint for sampling. *)
 module ModelHint : sig
-  type t = { name : string option } [@@deriving yojson { strict = false }]
+  type t = { name : string option }
+
+  val json : t Jsont.t
   (** Optional model name hint. *)
 end
 
@@ -327,14 +365,16 @@ module ModelPreferences : sig
     speed_priority : float option;
     intelligence_priority : float option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Preferences for model selection with priority weights. *)
 end
 
 (** Completion argument specification. *)
 module CompletionArgument : sig
   type t = { name : string; value : string }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Named argument with value. *)
 end
 
@@ -342,13 +382,15 @@ end
 module CompletionReference : sig
   (** Reference to completable items by type and name. *)
   type t = Resource of string | ResourceTemplate of string | Prompt of string
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
 end
 
 (** Completion result with pagination. *)
 module Completion : sig
   type t = { values : string list; total : int option; has_more : bool option }
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
   (** Completion values with optional pagination info. *)
 end
 
@@ -362,7 +404,8 @@ module PrimitiveSchema : sig
     min_length : int option;
     max_length : int option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val string_schema_json : string_schema Jsont.t
 
   type number_schema = {
     type_ : string;
@@ -371,7 +414,8 @@ module PrimitiveSchema : sig
     minimum : int option;
     maximum : int option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val number_schema_json : number_schema Jsont.t
 
   type boolean_schema = {
     type_ : string;
@@ -379,7 +423,8 @@ module PrimitiveSchema : sig
     description : string option;
     default : bool option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val boolean_schema_json : boolean_schema Jsont.t
 
   type enum_schema = {
     type_ : string;
@@ -388,14 +433,16 @@ module PrimitiveSchema : sig
     enum : string list;
     enum_names : string list option;
   }
-  [@@deriving yojson { strict = false }]
+
+  val enum_schema_json : enum_schema Jsont.t
 
   type t =
     | String of string_schema
     | Number of number_schema
     | Boolean of boolean_schema
     | Enum of enum_schema
-  [@@deriving yojson { strict = false }]
+
+  val json : t Jsont.t
 end
 
 (** Elicitation schema for structured input. *)
@@ -406,6 +453,5 @@ module ElicitationSchema : sig
     required : string list;
   }
 
-  val to_yojson : t -> Yojson.Safe.t
-  val of_yojson : Yojson.Safe.t -> (t, string) result
+  val json : t Jsont.t
 end

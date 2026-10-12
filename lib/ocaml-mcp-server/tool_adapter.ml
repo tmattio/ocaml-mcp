@@ -7,15 +7,14 @@ module type S = sig
   module Args : sig
     type t
 
-    val of_yojson : Yojson.Safe.t -> (t, string) Result.t
-    val to_yojson : t -> Yojson.Safe.t
-    val schema : unit -> Yojson.Safe.t
+    val json : t Jsont.t
+    val schema : unit -> Jsont.json
   end
 
   module Output : sig
     type t
 
-    val to_yojson : t -> Yojson.Safe.t
+    val json : t Jsont.t
   end
 
   module Error : sig
@@ -51,7 +50,9 @@ let register_tool (type args out err)
           let result =
             match T.execute ~sw ~env sdk args with
             | Ok output ->
-                let json_output = T.Output.to_yojson output in
+                let json_output =
+                  Mcp.Types.Json_codec.encode T.Output.json output
+                in
                 Ok
                   {
                     Mcp.Request.Tools.Call.content =
@@ -59,7 +60,7 @@ let register_tool (type args out err)
                         Mcp.Types.Content.Text
                           {
                             type_ = "text";
-                            text = Yojson.Safe.to_string json_output;
+                            text = Mcp.Json.to_string json_output;
                             meta = None;
                           };
                       ];

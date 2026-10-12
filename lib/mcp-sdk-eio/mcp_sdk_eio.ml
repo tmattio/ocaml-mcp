@@ -4,9 +4,8 @@
 module type Json_converter = sig
   type t
 
-  val to_yojson : t -> Yojson.Safe.t
-  val of_yojson : Yojson.Safe.t -> (t, string) result
-  val schema : unit -> Yojson.Safe.t
+  val json : t Jsont.t
+  val schema : unit -> Jsont.json
 end
 
 (* Re-export common modules *)

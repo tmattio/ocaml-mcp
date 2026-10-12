@@ -4,11 +4,11 @@
     messages using newline-delimited JSON (NDJSON) format. It provides
     conversion between different JSON representations and I/O operations. *)
 
-val json_to_yojson : Jsonrpc.Json.t -> Yojson.Safe.t
-(** [json_to_yojson json] converts from jsonrpc to Yojson format. *)
+val json_to_jsont : Jsonrpc.Json.t -> Jsont.json
+(** [json_to_jsont json] converts from jsonrpc to Jsont format. *)
 
-val yojson_to_json : Yojson.Safe.t -> Jsonrpc.Json.t
-(** [yojson_to_json yojson] converts from Yojson to jsonrpc format. *)
+val jsont_to_json : Jsont.json -> Jsonrpc.Json.t
+(** [jsont_to_json json] converts from Jsont to jsonrpc format. *)
 
 val write_packet : _ Eio.Flow.sink -> Jsonrpc.Packet.t -> unit
 (** [write_packet sink packet] writes packet as newline-delimited JSON. *)

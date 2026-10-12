@@ -58,29 +58,37 @@ module Client = struct
     let request : Mcp.Request.t = Mcp.Request.ToolsList params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (
-          match Mcp.Request.Tools.List.result_of_yojson json with
+          match Jsont.Json.decode Mcp.Request.Tools.List.result_json json with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error e -> callback (Error e.message))
 
-  let tools_call t ~name ~args ~args_to_yojson ?meta callback =
-    let params : Mcp.Request.Tools.Call.params =
-      { name; arguments = Some (args_to_yojson args); meta }
-    in
-    let request : Mcp.Request.t = Mcp.Request.ToolsCall params in
-    Mcp.Client.send_request (get_mcp_client t) request (function
-      | Ok json -> (
-          match Mcp.Request.Tools.Call.result_of_yojson json with
-          | Ok result -> callback (Ok result)
-          | Error e -> callback (Error e))
-      | Error e -> callback (Error e.message))
+  let tools_call t ~name ~args ~args_json ?meta callback =
+    match Jsont.Json.encode args_json args with
+    | Error error -> Error ("Failed to encode arguments: " ^ error)
+    | Ok arguments ->
+        let params : Mcp.Request.Tools.Call.params =
+          { name; arguments = Some arguments; meta }
+        in
+        let request : Mcp.Request.t = Mcp.Request.ToolsCall params in
+        Ok
+          (Mcp.Client.send_request (get_mcp_client t) request (function
+            | Ok json -> (
+                match
+                  Jsont.Json.decode Mcp.Request.Tools.Call.result_json json
+                with
+                | Ok result -> callback (Ok result)
+                | Error e -> callback (Error e))
+            | Error e -> callback (Error e.message)))
 
   let resources_list t ?meta callback =
     let params = { Mcp.Request.Resources.List.cursor = None; meta } in
     let request : Mcp.Request.t = Mcp.Request.ResourcesList params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (
-          match Mcp.Request.Resources.List.result_of_yojson json with
+          match
+            Jsont.Json.decode Mcp.Request.Resources.List.result_json json
+          with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error e -> callback (Error e.message))
@@ -90,7 +98,9 @@ module Client = struct
     let request : Mcp.Request.t = Mcp.Request.ResourcesRead params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (
-          match Mcp.Request.Resources.Read.result_of_yojson json with
+          match
+            Jsont.Json.decode Mcp.Request.Resources.Read.result_json json
+          with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error e -> callback (Error e.message))
@@ -100,31 +110,39 @@ module Client = struct
     let request : Mcp.Request.t = Mcp.Request.PromptsList params in
     Mcp.Client.send_request (get_mcp_client t) request (function
       | Ok json -> (
-          match Mcp.Request.Prompts.List.result_of_yojson json with
+          match Jsont.Json.decode Mcp.Request.Prompts.List.result_json json with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error e -> callback (Error e.message))
 
-  let prompts_get t ~name ~args ~args_to_yojson ?meta callback =
-    let args_json = args_to_yojson args in
-    let arguments =
-      match args_json with
-      | `Assoc fields ->
-          Some
-            (List.map
-               (fun (k, v) ->
-                 match v with
-                 | `String s -> (k, s)
-                 | _ -> (k, Yojson.Safe.to_string v))
-               fields)
-      | _ -> None
-    in
-    let params = { Mcp.Request.Prompts.Get.name; arguments; meta } in
-    let request : Mcp.Request.t = Mcp.Request.PromptsGet params in
-    Mcp.Client.send_request (get_mcp_client t) request (function
-      | Ok json -> (
-          match Mcp.Request.Prompts.Get.result_of_yojson json with
-          | Ok result -> callback (Ok result)
-          | Error e -> callback (Error e))
-      | Error e -> callback (Error e.message))
+  let prompts_get t ~name ~args ~args_json ?meta callback =
+    match Jsont.Json.encode args_json args with
+    | Error error -> Error ("Failed to encode arguments: " ^ error)
+    | Ok json -> (
+        match Mcp.Json.fields json with
+        | None -> Error "Prompt arguments must encode to a JSON object"
+        | Some fields ->
+            let arguments =
+              Some
+                (List.map
+                   (fun (key, value) ->
+                     let text =
+                       match Mcp.Json.get_string value with
+                       | Some text -> text
+                       | None -> Mcp.Json.to_string value
+                     in
+                     (key, text))
+                   fields)
+            in
+            let params = { Mcp.Request.Prompts.Get.name; arguments; meta } in
+            let request : Mcp.Request.t = Mcp.Request.PromptsGet params in
+            Ok
+              (Mcp.Client.send_request (get_mcp_client t) request (function
+                | Ok json -> (
+                    match
+                      Jsont.Json.decode Mcp.Request.Prompts.Get.result_json json
+                    with
+                    | Ok result -> callback (Ok result)
+                    | Error e -> callback (Error e))
+                | Error e -> callback (Error e.message))))
 end

@@ -5,6 +5,7 @@
  (name ocaml_mcp_server)
  (libraries
   mcp
+  jsont
   mcp-eio
   mcp.sdk
   mcp-eio.sdk
@@ -14,6 +15,4 @@
   logs
   csexp
   merlin-lib.ocaml_parsing
-  merlin-lib.ocaml_utils)
- (preprocess
-  (pps ppx_deriving_yojson)))
+  merlin-lib.ocaml_utils))

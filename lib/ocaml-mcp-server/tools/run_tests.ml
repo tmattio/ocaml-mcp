@@ -2,30 +2,48 @@ let name = "dune_run_tests"
 let description = "Run tests defined in the Dune project and report results"
 
 module Args = struct
-  type t = { test_names : string list option [@default None] }
-  [@@deriving yojson]
+  type t = { test_names : string list option }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun test_names -> ({ test_names } : t))
+    |> Jsont.Object.mem "test_names"
+         (Jsont.option (Jsont.list Jsont.string))
+         ~dec_absent:None ~enc_omit:Option.is_none
+         ~enc:(fun (v : t) -> v.test_names)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc
+          Mcp.Json.object_
             [
               ( "test_names",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "array");
-                    ("items", `Assoc [ ("type", `String "string") ]);
+                    ("type", Mcp.Json.string "array");
+                    ( "items",
+                      Mcp.Json.object_ [ ("type", Mcp.Json.string "string") ] );
                   ] );
             ] );
-        ("required", `List []);
+        ("required", Mcp.Json.array []);
       ]
 end
 
 module Output = struct
-  type t = { message : string; test_count : int option [@default None] }
-  [@@deriving yojson]
+  type t = { message : string; test_count : int option }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun message test_count -> ({ message; test_count } : t))
+    |> Jsont.Object.mem "message" Jsont.string ~enc:(fun (v : t) -> v.message)
+    |> Jsont.Object.mem "test_count"
+         (Jsont.option Mcp.Types.Json_codec.integer_json)
+         ~dec_absent:None ~enc_omit:Option.is_none ~enc:(fun (v : t) ->
+           v.test_count)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

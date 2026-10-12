@@ -7,29 +7,41 @@ let description =
    the code and returns diagnostics."
 
 module Args = struct
-  type t = { file_path : string; content : string } [@@deriving yojson]
+  type t = { file_path : string; content : string }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun file_path content -> ({ file_path; content } : t))
+    |> Jsont.Object.mem "file_path" Jsont.string ~enc:(fun (v : t) ->
+        v.file_path)
+    |> Jsont.Object.mem "content" Jsont.string ~enc:(fun (v : t) -> v.content)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc
+          Mcp.Json.object_
             [
               ( "file_path",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "string");
-                    ("description", `String "The path to the file to write");
+                    ("type", Mcp.Json.string "string");
+                    ( "description",
+                      Mcp.Json.string "The path to the file to write" );
                   ] );
               ( "content",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "string");
-                    ("description", `String "The content to write to the file");
+                    ("type", Mcp.Json.string "string");
+                    ( "description",
+                      Mcp.Json.string "The content to write to the file" );
                   ] );
             ] );
-        ("required", `List [ `String "file_path"; `String "content" ]);
+        ( "required",
+          Mcp.Json.array
+            [ Mcp.Json.string "file_path"; Mcp.Json.string "content" ] );
       ]
 end
 
@@ -42,14 +54,43 @@ module Output = struct
     end_line : int;
     end_col : int;
   }
-  [@@deriving yojson]
+
+  let diagnostic_json : diagnostic Jsont.t =
+    Jsont.Object.map
+      (fun message severity start_line start_col end_line end_col ->
+        ({ message; severity; start_line; start_col; end_line; end_col }
+          : diagnostic))
+    |> Jsont.Object.mem "message" Jsont.string ~enc:(fun (v : diagnostic) ->
+        v.message)
+    |> Jsont.Object.mem "severity" Jsont.string ~enc:(fun (v : diagnostic) ->
+        v.severity)
+    |> Jsont.Object.mem "start_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.start_line)
+    |> Jsont.Object.mem "start_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.start_col)
+    |> Jsont.Object.mem "end_line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.end_line)
+    |> Jsont.Object.mem "end_col" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.end_col)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   type t = {
     path : string;
     formatted : bool;
-    diagnostics : diagnostic list option; [@yojson.option]
+    diagnostics : diagnostic list option;
   }
-  [@@deriving yojson]
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun path formatted diagnostics ->
+        ({ path; formatted; diagnostics } : t))
+    |> Jsont.Object.mem "path" Jsont.string ~enc:(fun (v : t) -> v.path)
+    |> Jsont.Object.mem "formatted" Jsont.bool ~enc:(fun (v : t) -> v.formatted)
+    |> Jsont.Object.mem "diagnostics"
+         (Jsont.option (Jsont.list diagnostic_json))
+         ~enc:(fun (v : t) -> v.diagnostics)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

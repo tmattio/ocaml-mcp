@@ -6,31 +6,31 @@ module Test_mcp_meta = struct
   let test_valid_keys () =
     (* Comprehensive test of valid key formats *)
     let valid_meta =
-      `Assoc
+      Mcp.Json.object_
         [
           (* Names without prefix *)
-          ("", `Null);
+          ("", Mcp.Json.null);
           (* empty is valid *)
-          ("a", `Null);
+          ("a", Mcp.Json.null);
           (* single letter *)
-          ("1", `Null);
+          ("1", Mcp.Json.null);
           (* single digit *)
-          ("simple", `Null);
-          ("simple-name", `Null);
-          ("simple_name", `Null);
-          ("simple.name", `Null);
-          ("CamelCase", `Null);
-          ("snake_case", `Null);
-          ("kebab-case", `Null);
-          ("123_mixed.name-456", `Null);
+          ("simple", Mcp.Json.null);
+          ("simple-name", Mcp.Json.null);
+          ("simple_name", Mcp.Json.null);
+          ("simple.name", Mcp.Json.null);
+          ("CamelCase", Mcp.Json.null);
+          ("snake_case", Mcp.Json.null);
+          ("kebab-case", Mcp.Json.null);
+          ("123_mixed.name-456", Mcp.Json.null);
           (* Names with prefixes *)
-          ("valid/", `Null);
+          ("valid/", Mcp.Json.null);
           (* empty name after slash *)
-          ("valid/name", `Null);
-          ("a/b", `Null);
-          ("valid-label/name", `Null);
-          ("valid1.valid2.valid3/name", `Null);
-          ("prefix.with.dots/name-with-hyphens_and_underscores", `Null);
+          ("valid/name", Mcp.Json.null);
+          ("a/b", Mcp.Json.null);
+          ("valid-label/name", Mcp.Json.null);
+          ("valid1.valid2.valid3/name", Mcp.Json.null);
+          ("prefix.with.dots/name-with-hyphens_and_underscores", Mcp.Json.null);
         ]
     in
     check (result unit string) "valid keys" (Ok ()) (validate (Some valid_meta))
@@ -56,7 +56,7 @@ module Test_mcp_meta = struct
     in
     List.iter
       (fun (key, description) ->
-        let meta = `Assoc [ (key, `Null) ] in
+        let meta = Mcp.Json.object_ [ (key, Mcp.Json.null) ] in
         check bool description true (Result.is_error (validate (Some meta))))
       test_cases
 
@@ -82,7 +82,7 @@ module Test_mcp_meta = struct
     (* Test without prefix *)
     List.iter
       (fun name ->
-        let meta = `Assoc [ (name, `Null) ] in
+        let meta = Mcp.Json.object_ [ (name, Mcp.Json.null) ] in
         check bool
           (Printf.sprintf "name '%s' should be invalid" name)
           true
@@ -93,7 +93,7 @@ module Test_mcp_meta = struct
     List.iter
       (fun name ->
         let key = "prefix/" ^ name in
-        let meta = `Assoc [ (key, `Null) ] in
+        let meta = Mcp.Json.object_ [ (key, Mcp.Json.null) ] in
         check bool
           (Printf.sprintf "prefixed name '%s' should be invalid" name)
           true
@@ -133,7 +133,7 @@ module Test_mcp_meta = struct
     (* Test reserved keys are rejected *)
     List.iter
       (fun key ->
-        let meta = `Assoc [ (key, `Null) ] in
+        let meta = Mcp.Json.object_ [ (key, Mcp.Json.null) ] in
         check bool
           (Printf.sprintf "'%s' should be reserved" key)
           true
@@ -143,7 +143,7 @@ module Test_mcp_meta = struct
     (* Test non-reserved keys are accepted *)
     List.iter
       (fun key ->
-        let meta = `Assoc [ (key, `Null) ] in
+        let meta = Mcp.Json.object_ [ (key, Mcp.Json.null) ] in
         check bool
           (Printf.sprintf "'%s' should not be reserved" key)
           true
@@ -163,7 +163,7 @@ module Test_mcp_meta = struct
     in
     List.iter
       (fun (key, description) ->
-        let meta = `Assoc [ (key, `Null) ] in
+        let meta = Mcp.Json.object_ [ (key, Mcp.Json.null) ] in
         check bool description true (Result.is_error (validate (Some meta))))
       invalid_cases
 
@@ -179,7 +179,7 @@ module Test_mcp_meta = struct
     in
     List.iter
       (fun (key, description) ->
-        let meta = `Assoc [ (key, `Null) ] in
+        let meta = Mcp.Json.object_ [ (key, Mcp.Json.null) ] in
         check bool description true (Result.is_error (validate (Some meta))))
       invalid_cases
 
@@ -187,23 +187,23 @@ module Test_mcp_meta = struct
     (* Test metadata structure validation *)
     check (result unit string) "empty meta" (Ok ()) (validate None);
 
-    let empty_object = `Assoc [] in
+    let empty_object = Mcp.Json.object_ [] in
     check (result unit string) "empty object" (Ok ())
       (validate (Some empty_object));
 
-    let non_object = `List [] in
+    let non_object = Mcp.Json.array [] in
     check bool "non-object rejected" true
       (Result.is_error (validate (Some non_object)));
 
     (* Test that validation fails if any key is invalid *)
     let mixed_meta =
-      `Assoc
+      Mcp.Json.object_
         [
-          ("valid", `Null);
-          ("also-valid", `Null);
-          ("mcp.reserved/name", `Null);
+          ("valid", Mcp.Json.null);
+          ("also-valid", Mcp.Json.null);
+          ("mcp.reserved/name", Mcp.Json.null);
           (* this one is invalid *)
-          ("another-valid", `Null);
+          ("another-valid", Mcp.Json.null);
         ]
     in
     check bool "mixed valid and invalid keys" true
@@ -229,7 +229,7 @@ module Test_mcp_meta = struct
     in
     List.iter
       (fun (key, should_be_valid, description) ->
-        let meta = `Assoc [ (key, `Null) ] in
+        let meta = Mcp.Json.object_ [ (key, Mcp.Json.null) ] in
         let result = validate (Some meta) in
         if should_be_valid then
           check bool description true (Result.is_ok result)

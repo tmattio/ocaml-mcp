@@ -21,8 +21,8 @@ end
 (** The context passed to every server-side request handler. It provides access
     to request-specific information and actions. *)
 module Context : sig
-  type t
-  (** An opaque type representing the request context. *)
+  type t = Common.Context.t
+  (** Request context shared by the server and public context helpers. *)
 
   val request_id : t -> request_id
   (** [request_id t] returns the unique identifier of the incoming request.
@@ -44,7 +44,7 @@ module Context : sig
       optionally indicates the total amount of work. If no progress token is
       available, this function does nothing. *)
 
-  val meta : t -> Yojson.Safe.t option
+  val meta : t -> Jsont.json option
   (** [meta t] returns the metadata object from the request, if provided. *)
 end
 
@@ -52,7 +52,7 @@ end
 module Tool_result : sig
   val create :
     ?content:Mcp.Types.Content.t list ->
-    ?structured_content:Yojson.Safe.t ->
+    ?structured_content:Jsont.json ->
     ?is_error:bool ->
     unit ->
     Mcp.Request.Tools.Call.result
@@ -69,8 +69,7 @@ module Tool_result : sig
   val error : string -> Mcp.Request.Tools.Call.result
   (** [error msg] creates an error result with the given message *)
 
-  val structured :
-    ?text:string -> Yojson.Safe.t -> Mcp.Request.Tools.Call.result
+  val structured : ?text:string -> Jsont.json -> Mcp.Request.Tools.Call.result
   (** [structured ?text json] creates a result with structured content.
       Optionally includes a text description. *)
 end
@@ -78,9 +77,11 @@ end
 module type Json_converter = sig
   type t
 
-  val to_yojson : t -> Yojson.Safe.t
-  val of_yojson : Yojson.Safe.t -> (t, string) result
-  val schema : unit -> Yojson.Safe.t
+  val json : t Jsont.t
+  (** Bidirectional codec for typed arguments. *)
+
+  val schema : unit -> Jsont.json
+  (** Explicit JSON Schema used for tool input validation. *)
 end
 
 module type Io = sig
@@ -113,7 +114,7 @@ module Make_server (Io : Io) : sig
     string ->
     ?title:string ->
     ?description:string ->
-    ?output_schema:Yojson.Safe.t ->
+    ?output_schema:Jsont.json ->
     ?annotations:Mcp.Types.Tool.annotation ->
     ?args:(module Json_converter with type t = 'args) ->
     ('args -> Context.t -> (Mcp.Request.Tools.Call.result, string) result Io.t) ->
@@ -193,7 +194,7 @@ module Client : sig
 
   val tools_list :
     t ->
-    ?meta:Yojson.Safe.t ->
+    ?meta:Jsont.json ->
     ((Mcp.Request.Tools.List.result, string) result -> unit) ->
     outgoing_message
   (** [tools_list t callback] prepares a request to list available tools. *)
@@ -202,17 +203,17 @@ module Client : sig
     t ->
     name:string ->
     args:'args ->
-    args_to_yojson:('args -> Yojson.Safe.t) ->
-    ?meta:Yojson.Safe.t ->
+    args_json:'args Jsont.t ->
+    ?meta:Jsont.json ->
     ((Mcp.Request.Tools.Call.result, string) result -> unit) ->
-    outgoing_message
-  (** [tools_call t ~name ~args ~args_to_yojson callback] prepares a request to
-      call a remote tool. The [args] record is automatically converted to JSON
-      using the provided `args_to_yojson` function. *)
+    (outgoing_message, string) result
+  (** [tools_call t ~name ~args ~args_json callback] prepares a request to call
+      a remote tool. The [args] value is encoded with [args_json]. Encoding
+      errors are returned before a request is created. *)
 
   val resources_list :
     t ->
-    ?meta:Yojson.Safe.t ->
+    ?meta:Jsont.json ->
     ((Mcp.Request.Resources.List.result, string) result -> unit) ->
     outgoing_message
   (** [resources_list t callback] prepares a request to list resources. *)
@@ -220,14 +221,14 @@ module Client : sig
   val resources_read :
     t ->
     uri:string ->
-    ?meta:Yojson.Safe.t ->
+    ?meta:Jsont.json ->
     ((Mcp.Request.Resources.Read.result, string) result -> unit) ->
     outgoing_message
   (** [resources_read t ~uri callback] prepares a request to read a resource. *)
 
   val prompts_list :
     t ->
-    ?meta:Yojson.Safe.t ->
+    ?meta:Jsont.json ->
     ((Mcp.Request.Prompts.List.result, string) result -> unit) ->
     outgoing_message
   (** [prompts_list t callback] prepares a request to list prompts. *)
@@ -236,10 +237,11 @@ module Client : sig
     t ->
     name:string ->
     args:'args ->
-    args_to_yojson:('args -> Yojson.Safe.t) ->
-    ?meta:Yojson.Safe.t ->
+    args_json:'args Jsont.t ->
+    ?meta:Jsont.json ->
     ((Mcp.Request.Prompts.Get.result, string) result -> unit) ->
-    outgoing_message
-  (** [prompts_get t ~name ~args ~args_to_yojson callback] prepares a request to
-      retrieve a prompt, substituting the given arguments. *)
+    (outgoing_message, string) result
+  (** [prompts_get t ~name ~args ~args_json callback] prepares a request to
+      retrieve a prompt. [args_json] must encode a JSON object. Encoding and
+      object-shape errors are returned before a request is created. *)
 end

@@ -59,14 +59,14 @@ Certain key names are reserved by MCP for protocol-level metadata, as specified 
 Additionally, definitions in the schema may reserve particular names for purpose-specific metadata, as declared in those definitions.
 Key name format: valid _meta key names have two segments: an optional prefix, and a name."
 *)
-let validate_meta_json (json : Yojson.Safe.t) : (unit, string) result =
+let validate_meta_json (json : Jsont.json) : (unit, string) result =
   (* All keys must be valid _meta.<key> *)
   match json with
-  | `Assoc items ->
+  | Jsont.Object (items, _) ->
       List.fold_left
-        (fun acc (key, _) -> Result.bind acc (fun _ -> validate_key key))
+        (fun acc ((key, _), _) -> Result.bind acc (fun _ -> validate_key key))
         (Ok ()) items
   | _ -> Error "Only JSON objects are valid _meta"
 
-let validate (meta_option : Yojson.Safe.t option) : (unit, string) result =
+let validate (meta_option : Jsont.json option) : (unit, string) result =
   match meta_option with None -> Ok () | Some json -> validate_meta_json json

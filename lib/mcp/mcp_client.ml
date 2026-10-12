@@ -26,7 +26,7 @@ type t = {
   mutable next_id : int;
   pending_requests :
     ( Jsonrpc.Id.t,
-      (Yojson.Safe.t, Jsonrpc.Response.Error.t) result -> unit )
+      (Jsont.json, Jsonrpc.Response.Error.t) result -> unit )
     Hashtbl.t;
   notification_handler : notification_handler;
   request_handler : request_handler option;
@@ -57,7 +57,7 @@ let next_id (client : t) : Jsonrpc.Id.t =
   `Int id
 
 let send_request (client : t) (request : Request.t)
-    (callback : (Yojson.Safe.t, Jsonrpc.Response.Error.t) result -> unit) :
+    (callback : (Jsont.json, Jsonrpc.Response.Error.t) result -> unit) :
     outgoing_message =
   let id = next_id client in
   Hashtbl.add client.pending_requests id callback;
@@ -81,7 +81,7 @@ let handle_notification (client : t) (notification : Notification.t) : unit =
   | _ -> () (* Client doesn't handle other notifications *)
 
 let handle_response (client : t) (id : Jsonrpc.Id.t)
-    (response : (Yojson.Safe.t, Jsonrpc.Response.Error.t) result) : unit =
+    (response : (Jsont.json, Jsonrpc.Response.Error.t) result) : unit =
   match Hashtbl.find_opt client.pending_requests id with
   | Some callback ->
       Hashtbl.remove client.pending_requests id;
@@ -109,13 +109,18 @@ let handle_request (client : t) (id : Jsonrpc.Id.t) (request : Request.t) :
         match request with
         | Request.SamplingCreateMessage params ->
             handler.on_sampling_create_message params
-            |> Result.map Request.Sampling.CreateMessage.result_to_yojson
+            |> Result.map
+                 (Mcp_types.Json_codec.encode
+                    Request.Sampling.CreateMessage.result_json)
         | Request.ElicitationCreate params ->
             handler.on_elicitation_create params
-            |> Result.map Request.Elicitation.Create.result_to_yojson
+            |> Result.map
+                 (Mcp_types.Json_codec.encode
+                    Request.Elicitation.Create.result_json)
         | Request.RootsList params ->
             handler.on_roots_list params
-            |> Result.map Request.Roots.List.result_to_yojson
+            |> Result.map
+                 (Mcp_types.Json_codec.encode Request.Roots.List.result_json)
         | _ -> Error "Client does not handle this request type"
       in
       match result with
@@ -160,7 +165,9 @@ let initialize (client : t) ~protocol_version
   send_request client (Request.Initialize params) (fun response ->
       match response with
       | Ok json -> (
-          match Request.Initialize.result_of_yojson json with
+          match
+            (Mcp_types.Json_codec.decode Request.Initialize.result_json) json
+          with
           | Ok result ->
               client.initialized <- true;
               client.server_capabilities <- Some result.capabilities;
@@ -185,7 +192,10 @@ let resources_list (client : t) ?cursor ?meta
   send_request client (Request.ResourcesList params) (fun response ->
       match response with
       | Ok json -> (
-          match Request.Resources.List.result_of_yojson json with
+          match
+            (Mcp_types.Json_codec.decode Request.Resources.List.result_json)
+              json
+          with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
@@ -197,7 +207,10 @@ let resources_read (client : t) ~uri ?meta
   send_request client (Request.ResourcesRead params) (fun response ->
       match response with
       | Ok json -> (
-          match Request.Resources.Read.result_of_yojson json with
+          match
+            (Mcp_types.Json_codec.decode Request.Resources.Read.result_json)
+              json
+          with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
@@ -209,7 +222,9 @@ let prompts_list (client : t) ?cursor ?meta
   send_request client (Request.PromptsList params) (fun response ->
       match response with
       | Ok json -> (
-          match Request.Prompts.List.result_of_yojson json with
+          match
+            (Mcp_types.Json_codec.decode Request.Prompts.List.result_json) json
+          with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
@@ -221,7 +236,9 @@ let prompts_get (client : t) ~name ?arguments ?meta
   send_request client (Request.PromptsGet params) (fun response ->
       match response with
       | Ok json -> (
-          match Request.Prompts.Get.result_of_yojson json with
+          match
+            (Mcp_types.Json_codec.decode Request.Prompts.Get.result_json) json
+          with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
@@ -233,7 +250,9 @@ let tools_list (client : t) ?cursor ?meta
   send_request client (Request.ToolsList params) (fun response ->
       match response with
       | Ok json -> (
-          match Request.Tools.List.result_of_yojson json with
+          match
+            (Mcp_types.Json_codec.decode Request.Tools.List.result_json) json
+          with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))
@@ -245,7 +264,9 @@ let tools_call (client : t) ~name ?arguments ?meta
   send_request client (Request.ToolsCall params) (fun response ->
       match response with
       | Ok json -> (
-          match Request.Tools.Call.result_of_yojson json with
+          match
+            (Mcp_types.Json_codec.decode Request.Tools.Call.result_json) json
+          with
           | Ok result -> callback (Ok result)
           | Error e -> callback (Error e))
       | Error err -> callback (Error err.message))

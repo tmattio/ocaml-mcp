@@ -22,9 +22,9 @@ type mode =
 
 type t = { mode : mode; mutable closed : bool; sw : Switch.t }
 
-(* Convert between jsonrpc and yojson - reuse from framing *)
-let json_to_yojson = Framing.json_to_yojson
-let yojson_to_json = Framing.yojson_to_json
+(* Convert between jsonrpc and Jsont - reuse from framing *)
+let json_to_jsont = Framing.json_to_jsont
+let jsont_to_json = Framing.jsont_to_json
 
 let create_server ~sw ~port ?(host = "127.0.0.1") () =
   {
@@ -66,8 +66,8 @@ let send t packet =
   | Client { config; client; response_queue; _ } ->
       (* For client, send HTTP POST request *)
       let json = Jsonrpc.Packet.yojson_of_t packet in
-      let yojson = json_to_yojson json in
-      let body = Yojson.Safe.to_string yojson in
+      let yojson = json_to_jsont json in
+      let body = Mcp.Json.to_string yojson in
       let headers =
         Http.Header.of_list [ ("Content-Type", "application/json") ]
       in
@@ -88,8 +88,8 @@ let send t packet =
               in
               if body_str <> "" then
                 try
-                  let yojson = Yojson.Safe.from_string body_str in
-                  let json = yojson_to_json yojson in
+                  let yojson = Mcp.Json.of_string body_str in
+                  let json = jsont_to_json yojson in
                   let response_packet = Jsonrpc.Packet.t_of_yojson json in
                   Stream.add response_queue response_packet
                 with exn ->
@@ -142,8 +142,8 @@ let make_handler (mode : mode) =
                 ()
             else
               try
-                let yojson = Yojson.Safe.from_string body_str in
-                let json = yojson_to_json yojson in
+                let yojson = Mcp.Json.of_string body_str in
+                let json = jsont_to_json yojson in
                 let packet = Jsonrpc.Packet.t_of_yojson json in
 
                 (* Create promise for response *)
@@ -158,8 +158,8 @@ let make_handler (mode : mode) =
                 let response_json =
                   Jsonrpc.Packet.yojson_of_t response_packet
                 in
-                let response_yojson = json_to_yojson response_json in
-                let response_str = Yojson.Safe.to_string response_yojson in
+                let response_yojson = json_to_jsont response_json in
+                let response_str = Mcp.Json.to_string response_yojson in
 
                 let headers =
                   Http.Header.of_list [ ("Content-Type", "application/json") ]

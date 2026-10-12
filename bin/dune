@@ -3,7 +3,7 @@
  (public_name mcp)
  (name mcp_client)
  (modules mcp_client)
- (libraries mcp mcp-eio eio eio_main jsonrpc yojson))
+ (libraries mcp mcp-eio eio eio_main jsonrpc jsont))
 
 (executable
  (public_name ocaml-mcp-server)
@@ -26,4 +26,4 @@
   logs.cli
   cmdliner
   jsonrpc
-  yojson))
+  jsont))

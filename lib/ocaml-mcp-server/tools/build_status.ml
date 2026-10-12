@@ -6,23 +6,33 @@ let description =
   "Get the current build status from dune, including any errors or warnings"
 
 module Args = struct
-  type t = { targets : string list option [@default None] } [@@deriving yojson]
+  type t = { targets : string list option }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun targets -> ({ targets } : t))
+    |> Jsont.Object.mem "targets"
+         (Jsont.option (Jsont.list Jsont.string))
+         ~dec_absent:None ~enc_omit:Option.is_none
+         ~enc:(fun (v : t) -> v.targets)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc
+          Mcp.Json.object_
             [
               ( "targets",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "array");
-                    ("items", `Assoc [ ("type", `String "string") ]);
+                    ("type", Mcp.Json.string "array");
+                    ( "items",
+                      Mcp.Json.object_ [ ("type", Mcp.Json.string "string") ] );
                   ] );
             ] );
-        ("required", `List []);
+        ("required", Mcp.Json.array []);
       ]
 end
 
@@ -34,10 +44,32 @@ module Output = struct
     column : int;
     message : string;
   }
-  [@@deriving yojson]
+
+  let diagnostic_json : diagnostic Jsont.t =
+    Jsont.Object.map (fun severity file line column message ->
+        ({ severity; file; line; column; message } : diagnostic))
+    |> Jsont.Object.mem "severity" Jsont.string ~enc:(fun (v : diagnostic) ->
+        v.severity)
+    |> Jsont.Object.mem "file" Jsont.string ~enc:(fun (v : diagnostic) ->
+        v.file)
+    |> Jsont.Object.mem "line" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.line)
+    |> Jsont.Object.mem "column" Mcp.Types.Json_codec.integer_json
+         ~enc:(fun (v : diagnostic) -> v.column)
+    |> Jsont.Object.mem "message" Jsont.string ~enc:(fun (v : diagnostic) ->
+        v.message)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   type t = { status : string; diagnostics : diagnostic list }
-  [@@deriving yojson]
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun status diagnostics -> ({ status; diagnostics } : t))
+    |> Jsont.Object.mem "status" Jsont.string ~enc:(fun (v : t) -> v.status)
+    |> Jsont.Object.mem "diagnostics" (Jsont.list diagnostic_json)
+         ~enc:(fun (v : t) -> v.diagnostics)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

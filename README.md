@@ -18,6 +18,10 @@ This repository contains:
 - **OCaml Development Server**
   - **ocaml-mcp-server** - Ready-to-use MCP server with OCaml development tools
 
+Protocol values and SDK argument converters use [Jsont](https://erratique.ch/software/jsont).
+The [JSON codec migration guide](docs/jsont-migration.md) describes the source API
+changes and the remaining JSON-RPC and JSON Schema dependency adapters.
+
 ## Installation
 
 ```bash
@@ -67,7 +71,7 @@ The server integrates with Merlin, Dune RPC, ocamlformat, and other OCaml Platfo
 - Transport layer (stdio, socket, memory, HTTP)
 - Server-to-client request handling (sampling, elicitation, roots)
 - High-level SDK with type-safe tool/resource/prompt registration
-- Dynamic JSON schema generation from OCaml types
+- Typed Jsont argument codecs with JSON Schema validation
 - OCaml development tools (Dune build status, module signatures from build artifacts)
 - Full compliance with MCP 2025-06-18 specification
 

@@ -4,28 +4,46 @@ let name = "ocaml_module_signature"
 let description = "Get the signature of an OCaml module from build artifacts"
 
 module Args = struct
-  type t = { module_path : string list } [@@deriving yojson]
+  type t = { module_path : string list }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun module_path -> ({ module_path } : t))
+    |> Jsont.Object.mem "module_path" (Jsont.list Jsont.string)
+         ~enc:(fun (v : t) -> v.module_path)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 
   let schema () =
-    `Assoc
+    Mcp.Json.object_
       [
-        ("type", `String "object");
+        ("type", Mcp.Json.string "object");
         ( "properties",
-          `Assoc
+          Mcp.Json.object_
             [
               ( "module_path",
-                `Assoc
+                Mcp.Json.object_
                   [
-                    ("type", `String "array");
-                    ("items", `Assoc [ ("type", `String "string") ]);
+                    ("type", Mcp.Json.string "array");
+                    ( "items",
+                      Mcp.Json.object_ [ ("type", Mcp.Json.string "string") ] );
                   ] );
             ] );
-        ("required", `List [ `String "module_path" ]);
+        ("required", Mcp.Json.array [ Mcp.Json.string "module_path" ]);
       ]
 end
 
 module Output = struct
-  type t = { signature : string; module_name : string } [@@deriving yojson]
+  type t = { signature : string; module_name : string }
+
+  let json : t Jsont.t =
+    Jsont.Object.map (fun signature module_name ->
+        ({ signature; module_name } : t))
+    |> Jsont.Object.mem "signature" Jsont.string ~enc:(fun (v : t) ->
+        v.signature)
+    |> Jsont.Object.mem "module_name" Jsont.string ~enc:(fun (v : t) ->
+        v.module_name)
+    |> Jsont.Object.error_unknown |> Jsont.Object.finish
+    |> Mcp.Types.Json_codec.last_object
 end
 
 module Error = struct

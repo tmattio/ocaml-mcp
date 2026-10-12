@@ -26,7 +26,8 @@
   jsonrpc
   jsonschema
   yojson
-  ppx_deriving_yojson
+  (jsont (>= 0.4.0))
+  bytesrw
   logs
   re
   (alcotest :with-test))
@@ -42,8 +43,10 @@
   ocaml
   eio
   mcp
+  (jsont (>= 0.4.0))
   http
   cohttp-eio
+  (alcotest :with-test)
   (eio_main :with-test)))
 
 (package
@@ -51,4 +54,4 @@
  (synopsis "MCP server providing tools for OCaml development")
  (description
   "An MCP (Model Context Protocol) server that provides tools for OCaml development, including integration with dune build system.")
- (depends ocaml mcp mcp-eio eio_main ocaml-platform-sdk cmdliner))
+ (depends ocaml mcp mcp-eio eio_main jsont ocaml-platform-sdk cmdliner (alcotest :with-test)))

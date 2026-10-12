@@ -44,7 +44,7 @@ val send_request :
   t ->
   Mcp.Client.t ->
   Mcp.Request.t ->
-  ((Yojson.Safe.t, Jsonrpc.Response.Error.t) result -> unit) ->
+  ((Jsont.json, Jsonrpc.Response.Error.t) result -> unit) ->
   unit
 (** [send_request t client request callback] sends client request.
 

@@ -3,7 +3,12 @@
 open Mcp_sdk
 
 (* Define the argument type for get-weather tool *)
-type weather_args = { city : string } [@@deriving yojson]
+type weather_args = { city : string }
+
+let weather_args_json =
+  Jsont.Object.map (fun city -> { city })
+  |> Jsont.Object.mem "city" Jsont.string ~enc:(fun args -> args.city)
+  |> Jsont.Object.finish
 
 (* Simulated weather data *)
 let get_weather city =
@@ -30,16 +35,20 @@ let () =
       (module struct
         type t = weather_args
 
-        let to_yojson = weather_args_to_yojson
-        let of_yojson = weather_args_of_yojson
+        let json = weather_args_json
 
         let schema () =
-          `Assoc
+          Mcp.Json.object_
             [
-              ("type", `String "object");
+              ("type", Jsont.Json.string "object");
               ( "properties",
-                `Assoc [ ("city", `Assoc [ ("type", `String "string") ]) ] );
-              ("required", `List [ `String "city" ]);
+                Mcp.Json.object_
+                  [
+                    ( "city",
+                      Mcp.Json.object_ [ ("type", Jsont.Json.string "string") ]
+                    );
+                  ] );
+              ("required", Jsont.Json.list [ Jsont.Json.string "city" ]);
             ]
       end)
     (fun args _ctx ->

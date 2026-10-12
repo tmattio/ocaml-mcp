@@ -33,17 +33,13 @@ let () =
       (module struct
         type t = string
 
-        let to_yojson s = `String s
-
-        let of_yojson = function
-          | `String s -> Ok s
-          | _ -> Error "Expected string"
+        let json = Jsont.string
 
         let schema () =
-          `Assoc
+          Mcp.Json.object_
             [
-              ("type", `String "string");
-              ("description", `String "Location name");
+              ("type", Jsont.Json.string "string");
+              ("description", Jsont.Json.string "Location name");
             ]
       end)
     (fun location ctx ->
